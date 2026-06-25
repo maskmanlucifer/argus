@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Argus Inspector — Design Inspector for Chrome</title>
+  <meta name="description" content="A lightweight design inspector that lives in your toolbar. Inspect, measure, and edit any element on any page.">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:      #0B0E18;
+      --surface: #131825;
+      --border:  #1D2540;
+      --accent:  #C8FF33;
+      --text:    #C4D0EC;
+      --muted:   #586480;
+      --mono:    'SFMono-Regular', Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
+      --sans:    -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: 1rem;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    /* ── Nav ── */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1.125rem 2rem;
+      border-bottom: 1px solid var(--border);
+      background: rgba(11, 14, 24, 0.88);
+      backdrop-filter: blur(10px);
+    }
+    .nav-logo {
+      font-family: var(--mono);
+      font-size: 0.8125rem;
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: 0.04em;
+      text-decoration: none;
+    }
+    .nav-right { display: flex; align-items: center; gap: 1.5rem; }
+    .nav-link {
+      font-family: var(--mono);
+      font-size: 0.75rem;
+      color: var(--muted);
+      text-decoration: none;
+      letter-spacing: 0.04em;
+      transition: color 0.12s;
+    }
+    .nav-link:hover { color: var(--text); }
+    .nav-cta {
+      font-family: var(--mono);
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      color: var(--bg);
+      background: var(--accent);
+      padding: 0.4rem 0.875rem;
+      text-decoration: none;
+      transition: opacity 0.12s;
+    }
+    .nav-cta:hover { opacity: 0.82; }
+
+    /* ── Hero ── */
+    .hero {
+      position: relative;
+      padding: 6rem 2rem 5rem;
+      overflow: hidden;
+    }
+    /* Measurement grid overlay */
+    .hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(var(--border) 1px, transparent 1px),
+        linear-gradient(90deg, var(--border) 1px, transparent 1px);
+      background-size: 48px 48px;
+      mask-image: radial-gradient(ellipse 70% 80% at 50% 50%, black 30%, transparent 100%);
+      opacity: 0.5;
+      pointer-events: none;
+    }
+
+    .hero-inner {
+      position: relative;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .hero-eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-family: var(--mono);
+      font-size: 0.6875rem;
+      font-weight: 600;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 1.75rem;
+    }
+    .hero-eyebrow::before {
+      content: '';
+      display: block;
+      width: 18px;
+      height: 1px;
+      background: var(--accent);
+    }
+
+    h1 {
+      font-family: var(--mono);
+      font-size: clamp(2.75rem, 8vw, 6rem);
+      font-weight: 700;
+      line-height: 1.02;
+      letter-spacing: -0.025em;
+      color: #E2ECFF;
+      margin-bottom: 1.625rem;
+      text-wrap: balance;
+    }
+    h1 em {
+      font-style: normal;
+      color: var(--accent);
+    }
+
+    .hero-sub {
+      font-size: 1.0625rem;
+      color: var(--muted);
+      max-width: 440px;
+      line-height: 1.7;
+      margin-bottom: 2.5rem;
+    }
+
+    .hero-actions { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: var(--accent);
+      color: var(--bg);
+      font-family: var(--mono);
+      font-size: 0.8125rem;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      padding: 0.75rem 1.375rem;
+      text-decoration: none;
+      transition: opacity 0.12s;
+    }
+    .btn-primary:hover { opacity: 0.84; }
+
+    .btn-ghost {
+      font-family: var(--mono);
+      font-size: 0.8125rem;
+      color: var(--muted);
+      text-decoration: none;
+      letter-spacing: 0.03em;
+      transition: color 0.12s;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.375rem;
+    }
+    .btn-ghost:hover { color: var(--text); }
+
+    .hero-note {
+      margin-top: 1.125rem;
+      font-family: var(--mono);
+      font-size: 0.6875rem;
+      color: var(--muted);
+      letter-spacing: 0.03em;
+    }
+
+    /* ── Divider ── */
+    hr { border: none; border-top: 1px solid var(--border); }
+
+    /* ── Browser Mockup ── */
+    .mockup-section {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 3rem 2rem 4rem;
+    }
+
+    .browser {
+      border: 1px solid var(--border);
+      background: var(--surface);
+      overflow: hidden;
+    }
+    .browser-chrome {
+      background: #0D1120;
+      border-bottom: 1px solid var(--border);
+      padding: 0.6rem 0.875rem;
+      display: flex;
+      align-items: center;
+      gap: 0.375rem;
+    }
+    .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--border); }
+    .url-bar {
+      margin-left: 0.5rem;
+      flex: 1;
+      max-width: 280px;
+      background: var(--border);
+      border-radius: 2px;
+      padding: 0.2rem 0.625rem;
+      font-family: var(--mono);
+      font-size: 0.625rem;
+      color: var(--muted);
+    }
+
+    .browser-body {
+      position: relative;
+      padding: 1.5rem 1.5rem 1.5rem 4rem;
+      min-height: 200px;
+      display: flex;
+      align-items: center;
+    }
+
+    /* Simulated toolbar rail */
+    .tb-rail {
+      position: absolute;
+      left: 0.75rem;
+      top: 50%;
+      transform: translateY(-50%);
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      background: #0D1120;
+      border: 1px solid var(--border);
+      padding: 4px;
+    }
+    .tb-icon {
+      width: 26px;
+      height: 26px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted);
+      border-radius: 1px;
+    }
+    .tb-icon.on {
+      background: rgba(200, 255, 51, 0.1);
+      color: var(--accent);
+    }
+    .tb-div { width: 18px; height: 1px; background: var(--border); margin: 2px 4px; }
+
+    /* Page content simulation */
+    .page-sim {
+      flex: 1;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: auto auto;
+      gap: 10px;
+    }
+    .sim-block {
+      background: #1A2035;
+      border: 1px solid var(--border);
+      height: 64px;
+      border-radius: 1px;
+    }
+    .sim-block.wide { grid-column: span 2; }
+    .sim-block.sel {
+      border-color: var(--accent);
+      background: rgba(200, 255, 51, 0.04);
+      position: relative;
+    }
+    /* Corner markers */
+    .mk {
+      position: absolute;
+      width: 5px; height: 5px;
+      border-color: var(--accent);
+      border-style: solid;
+    }
+    .mk-tl { top: -1px; left: -1px; border-width: 1.5px 0 0 1.5px; }
+    .mk-tr { top: -1px; right: -1px; border-width: 1.5px 1.5px 0 0; }
+    .mk-bl { bottom: -1px; left: -1px; border-width: 0 0 1.5px 1.5px; }
+    .mk-br { bottom: -1px; right: -1px; border-width: 0 1.5px 1.5px 0; }
+
+    /* Inspect panel */
+    .inspect-panel {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      background: #0D1120;
+      border: 1px solid var(--border);
+      padding: 0.75rem;
+      width: 170px;
+      font-family: var(--mono);
+    }
+    .ip-label {
+      font-size: 0.5625rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      color: var(--accent);
+      text-transform: uppercase;
+      margin-bottom: 0.5rem;
+    }
+    .ip-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.5625rem;
+      color: var(--muted);
+      padding: 2px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .ip-row:last-child { border-bottom: none; }
+    .ip-val { color: var(--text); }
+    .ip-swatch {
+      display: inline-block;
+      width: 8px; height: 8px;
+      border-radius: 1px;
+      vertical-align: middle;
+      margin-right: 3px;
+    }
+
+    /* Measure badge */
+    .measure-badge {
+      position: absolute;
+      top: -9px;
+      right: 8px;
+      background: var(--accent);
+      color: var(--bg);
+      font-family: var(--mono);
+      font-size: 0.5625rem;
+      font-weight: 700;
+      padding: 1px 5px;
+      letter-spacing: 0.04em;
+    }
+
+    /* ── Tools Grid ── */
+    .tools-section {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 4rem 2rem;
+    }
+    .section-eyebrow {
+      font-family: var(--mono);
+      font-size: 0.6875rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 0.75rem;
+    }
+    h2 {
+      font-family: var(--mono);
+      font-size: clamp(1.375rem, 3vw, 1.875rem);
+      font-weight: 700;
+      color: #E2ECFF;
+      margin-bottom: 0.5rem;
+      text-wrap: balance;
+    }
+    .section-desc {
+      color: var(--muted);
+      font-size: 0.9375rem;
+      max-width: 480px;
+      margin-bottom: 2.25rem;
+    }
+
+    /* 1px-gap grid trick */
+    .tool-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 1px;
+      background: var(--border);
+      border: 1px solid var(--border);
+    }
+    .tool-card {
+      background: var(--bg);
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      transition: background 0.12s;
+    }
+    .tool-card:hover { background: var(--surface); }
+    .tool-head {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .kbd {
+      font-family: var(--mono);
+      font-size: 0.625rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      color: var(--accent);
+      border: 1px solid rgba(200, 255, 51, 0.25);
+      background: rgba(200, 255, 51, 0.06);
+      padding: 1px 5px;
+      min-width: 20px;
+      text-align: center;
+    }
+    .tool-name {
+      font-family: var(--mono);
+      font-size: 0.8125rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .tool-desc {
+      font-size: 0.8125rem;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+
+    /* ── Install ── */
+    .install-section {
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+    .install-inner {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 4rem 2rem;
+      display: grid;
+      grid-template-columns: 5fr 6fr;
+      gap: 4rem;
+      align-items: start;
+    }
+    .steps { display: flex; flex-direction: column; gap: 1.25rem; }
+    .step {
+      display: grid;
+      grid-template-columns: 2.5rem 1fr;
+      gap: 0.5rem;
+      align-items: start;
+    }
+    .step-n {
+      font-family: var(--mono);
+      font-size: 0.6875rem;
+      font-weight: 700;
+      color: var(--accent);
+      padding-top: 0.125rem;
+      letter-spacing: 0.04em;
+    }
+    .step-body {
+      font-size: 0.9rem;
+      color: var(--text);
+      line-height: 1.65;
+    }
+    .step-body code {
+      font-family: var(--mono);
+      font-size: 0.78rem;
+      color: var(--accent);
+      background: rgba(200, 255, 51, 0.07);
+      padding: 1px 5px;
+    }
+
+    /* ── Footer ── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 1.75rem 2rem;
+    }
+    .footer-inner {
+      max-width: 900px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      font-family: var(--mono);
+      font-size: 0.6875rem;
+      color: var(--muted);
+    }
+    .footer-inner a { color: var(--muted); text-decoration: none; transition: color 0.12s; }
+    .footer-inner a:hover { color: var(--accent); }
+
+    /* ── Responsive ── */
+    @media (max-width: 680px) {
+      .install-inner { grid-template-columns: 1fr; gap: 2rem; }
+      .page-sim { grid-template-columns: 1fr 1fr; }
+      .page-sim .sim-block.wide { grid-column: span 2; }
+      .inspect-panel { display: none; }
+      .nav-right .nav-link { display: none; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      * { transition: none !important; animation: none !important; }
+    }
+
+    /* Focus */
+    :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a class="nav-logo" href="#">argus://</a>
+  <div class="nav-right">
+    <a class="nav-link" href="#tools">Tools</a>
+    <a class="nav-link" href="#install">Install</a>
+    <a class="nav-cta" href="https://github.com/maskmanlucifer/argus">GitHub</a>
+  </div>
+</nav>
+
+<!-- ── Hero ── -->
+<section class="hero" id="top">
+  <div class="hero-inner">
+    <p class="hero-eyebrow">Chrome Extension</p>
+    <h1>Inspect.<br><em>Measure.</em><br>Understand.</h1>
+    <p class="hero-sub">A lightweight design inspector that lives in your toolbar — highlight, pin, measure, and edit any element on any page.</p>
+    <div class="hero-actions">
+      <a class="btn-primary" href="https://github.com/maskmanlucifer/argus/archive/refs/heads/master.zip">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Download ZIP
+      </a>
+      <a class="btn-ghost" href="https://github.com/maskmanlucifer/argus">
+        View source
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+      </a>
+    </div>
+    <p class="hero-note">Chrome · No account · Runs locally · Open source</p>
+  </div>
+</section>
+
+<hr>
+
+<!-- ── Browser Mockup ── -->
+<div class="mockup-section">
+  <div class="browser">
+    <div class="browser-chrome">
+      <div class="dot"></div>
+      <div class="dot"></div>
+      <div class="dot"></div>
+      <div class="url-bar">yoursite.com/products</div>
+    </div>
+    <div class="browser-body">
+      <!-- Toolbar rail -->
+      <div class="tb-rail">
+        <div class="tb-icon on">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><circle cx="12" cy="12" r="3"/><path d="m16 16-1.9-1.9"/></svg>
+        </div>
+        <div class="tb-icon">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
+        </div>
+        <div class="tb-icon">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+        </div>
+        <div class="tb-icon">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        </div>
+        <div class="tb-div"></div>
+        <div class="tb-icon">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </div>
+      </div>
+
+      <!-- Simulated page -->
+      <div class="page-sim">
+        <div class="sim-block wide"></div>
+        <div class="sim-block"></div>
+        <div class="sim-block sel">
+          <div class="mk mk-tl"></div>
+          <div class="mk mk-tr"></div>
+          <div class="mk mk-bl"></div>
+          <div class="mk mk-br"></div>
+          <div class="measure-badge">320 × 64</div>
+        </div>
+        <div class="sim-block"></div>
+        <div class="sim-block"></div>
+      </div>
+
+      <!-- Inspect panel -->
+      <div class="inspect-panel">
+        <div class="ip-label">Inspect</div>
+        <div class="ip-row"><span>Tag</span><span class="ip-val">&lt;div&gt;</span></div>
+        <div class="ip-row"><span>Class</span><span class="ip-val">.card</span></div>
+        <div class="ip-row"><span>Font</span><span class="ip-val">Inter</span></div>
+        <div class="ip-row"><span>Size</span><span class="ip-val">14px</span></div>
+        <div class="ip-row"><span>Color</span><span class="ip-val"><span class="ip-swatch" style="background:#E2ECFF"></span>#E2ECFF</span></div>
+        <div class="ip-row"><span>BG</span><span class="ip-val"><span class="ip-swatch" style="background:#1A2035"></span>#1A2035</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<hr>
+
+<!-- ── Tools ── -->
+<section class="tools-section" id="tools">
+  <p class="section-eyebrow">Tools</p>
+  <h2>Seven tools. One toolbar.</h2>
+  <p class="section-desc">Each tool is a focused instrument — no menus to dig through, no settings panels in the way.</p>
+
+  <div class="tool-grid">
+    <div class="tool-card">
+      <div class="tool-head"><span class="kbd">I</span><span class="tool-name">Inspect</span></div>
+      <p class="tool-desc">Hover to highlight any element, click to pin it. Shows tag, class, font, and color. One-click CSS copy.</p>
+    </div>
+    <div class="tool-card">
+      <div class="tool-head"><span class="kbd">T</span><span class="tool-name">Typography</span></div>
+      <p class="tool-desc">Hover any element to see its font family, size, and weight — live, without opening DevTools.</p>
+    </div>
+    <div class="tool-card">
+      <div class="tool-head"><span class="kbd">E</span><span class="tool-name">Edit Text</span></div>
+      <p class="tool-desc">Double-click any text to edit it inline. Enter to save, Esc to cancel. Great for copy reviews.</p>
+    </div>
+    <div class="tool-card">
+      <div class="tool-head"><span class="kbd">/</span><span class="tool-name">Search</span></div>
+      <p class="tool-desc">Find elements by CSS selector or text content. Enter and Shift+Enter cycle through matches.</p>
+    </div>
+    <div class="tool-card">
+      <div class="tool-head"><span class="kbd">R</span><span class="tool-name">Rulers</span></div>
+      <p class="tool-desc">Drop full-screen guide lines. Select one line, hover another — the gap displays automatically.</p>
+    </div>
+    <div class="tool-card">
+      <div class="tool-head"><span class="kbd">O</span><span class="tool-name">Outlines</span></div>
+      <p class="tool-desc">Toggle a 1px outline on every element on the page to see the box structure at a glance.</p>
+    </div>
+    <div class="tool-card">
+      <div class="tool-head"><span class="kbd">Z</span><span class="tool-name">Zoom</span></div>
+      <p class="tool-desc">Scale the page in or out in 10% steps. Resets cleanly when you switch to another tool.</p>
+    </div>
+  </div>
+</section>
+
+<hr>
+
+<!-- ── Install ── -->
+<div class="install-section" id="install">
+  <div class="install-inner">
+    <div>
+      <p class="section-eyebrow">Get started</p>
+      <h2>Load it in under a minute</h2>
+      <p class="section-desc" style="margin-bottom:0">No Chrome Web Store. Load directly from the repo as an unpacked extension — takes three steps.</p>
+    </div>
+    <div class="steps">
+      <div class="step">
+        <span class="step-n">01</span>
+        <p class="step-body">Download the ZIP and unzip it, or clone the repo with <code>git clone https://github.com/maskmanlucifer/argus.git</code></p>
+      </div>
+      <div class="step">
+        <span class="step-n">02</span>
+        <p class="step-body">Open <code>chrome://extensions</code>, enable <strong>Developer mode</strong> in the top-right corner, then click <strong>Load unpacked</strong> and select the <code>argus/</code> folder.</p>
+      </div>
+      <div class="step">
+        <span class="step-n">03</span>
+        <p class="step-body">Pin the extension from the toolbar menu and click its icon on any tab. The inspector opens immediately.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Footer ── -->
+<footer>
+  <div class="footer-inner">
+    <span>Argus Inspector</span>
+    <a href="https://github.com/maskmanlucifer/argus">github.com/maskmanlucifer/argus</a>
+    <span>MIT License</span>
+  </div>
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,45 @@
+{
+  "manifest_version": 3,
+  "name": "Argus Inspector",
+  "version": "1.0.0",
+  "description": "Lightweight design inspector for the web — inspect, edit, measure, and explore any page.",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage"
+  ],
+  "host_permissions": ["<all_urls>"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "toolbar/toolbar.css",
+        "toolbar/toolbar.js",
+        "tools/utils.js",
+        "tools/inspect.js",
+        "tools/typography.js",
+        "tools/edit.js",
+        "tools/search.js",
+        "tools/ruler.js",
+        "tools/outline.js",
+        "tools/zoom.js"
+      ],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}

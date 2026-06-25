@@ -1,0 +1,44 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: -apple-system, 'SF Pro Text', Inter, system-ui, sans-serif;
+  background: #15161A;
+  color: #E4E6F0;
+  width: 220px;
+}
+
+.popup { padding: 16px; }
+
+.header {
+  display: flex; align-items: center; gap: 9px;
+  margin-bottom: 14px;
+}
+
+.name {
+  font-size: 15px; font-weight: 700; letter-spacing: -0.01em;
+}
+
+.toggle-btn {
+  width: 100%; height: 30px;
+  border: none; border-radius: 7px; cursor: pointer;
+  font-size: 12.5px; font-weight: 600;
+  font-family: inherit;
+  background: #2170F4; color: #fff;
+  transition: opacity 120ms;
+}
+
+.toggle-btn:hover { opacity: 0.88; }
+.toggle-btn.active { background: #1a5cc5; }
+
+.shortcut {
+  margin-top: 10px;
+  font-size: 11.5px; color: rgba(255,255,255,0.38);
+  text-align: center;
+}
+
+.shortcut-key {
+  background: rgba(255,255,255,0.08);
+  border-radius: 4px; padding: 1px 5px;
+  font-weight: 600; font-size: 11px;
+  margin-right: 3px;
+}
