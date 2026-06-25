@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Privacy Policy — Argus Inspector</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      font-size: 1rem;
+      line-height: 1.7;
+      color: #111827;
+      background: #F6F8FC;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    nav {
+      background: #fff;
+      border-bottom: 1px solid #DDE3EF;
+      padding: 0 2rem;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .nav-logo {
+      font-weight: 700;
+      font-size: 0.9375rem;
+      color: #111827;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .nav-logo-dot { width: 8px; height: 8px; background: #2563EB; border-radius: 50%; }
+    .nav-back {
+      font-size: 0.875rem;
+      color: #6B7390;
+      text-decoration: none;
+    }
+    .nav-back:hover { color: #2563EB; }
+
+    .page {
+      max-width: 680px;
+      margin: 0 auto;
+      padding: 3.5rem 2rem 5rem;
+    }
+
+    .eyebrow {
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #2563EB;
+      margin-bottom: 0.75rem;
+    }
+
+    h1 {
+      font-size: 2rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      color: #111827;
+      margin-bottom: 0.5rem;
+    }
+
+    .updated {
+      font-size: 0.875rem;
+      color: #6B7390;
+      margin-bottom: 2.5rem;
+    }
+
+    .summary {
+      background: #EBF1FD;
+      border-left: 3px solid #2563EB;
+      padding: 1rem 1.25rem;
+      border-radius: 0 6px 6px 0;
+      font-size: 0.9375rem;
+      color: #1e3a8a;
+      margin-bottom: 2.5rem;
+      line-height: 1.6;
+    }
+
+    h2 {
+      font-size: 1.0625rem;
+      font-weight: 700;
+      color: #111827;
+      margin: 2rem 0 0.5rem;
+    }
+
+    p {
+      font-size: 0.9375rem;
+      color: #374151;
+      margin-bottom: 0.75rem;
+    }
+
+    ul {
+      margin: 0.25rem 0 0.75rem 1.25rem;
+    }
+    li {
+      font-size: 0.9375rem;
+      color: #374151;
+      margin-bottom: 0.25rem;
+    }
+
+    .contact {
+      margin-top: 2.5rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid #DDE3EF;
+      font-size: 0.875rem;
+      color: #6B7390;
+    }
+    .contact a { color: #2563EB; text-decoration: none; }
+    .contact a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a class="nav-logo" href="index.html">
+    <span class="nav-logo-dot"></span>
+    Argus Inspector
+  </a>
+  <a class="nav-back" href="index.html">← Back</a>
+</nav>
+
+<div class="page">
+  <p class="eyebrow">Legal</p>
+  <h1>Privacy Policy</h1>
+  <p class="updated">Last updated: June 25, 2026</p>
+
+  <div class="summary">
+    <strong>Short version:</strong> Argus Inspector does not collect, store, or transmit any personal data or browsing information. The only data stored is two local preferences (theme and toolbar position) that never leave your device.
+  </div>
+
+  <h2>What we collect</h2>
+  <p>Argus Inspector collects no user data of any kind. Specifically, the extension does <strong>not</strong> collect:</p>
+  <ul>
+    <li>Personal information (name, email, location, IP address)</li>
+    <li>Browsing history or visited URLs</li>
+    <li>Page content (text, images, or any site data)</li>
+    <li>User activity (clicks, keystrokes, mouse movements)</li>
+    <li>Authentication or financial information</li>
+  </ul>
+
+  <h2>Local preferences</h2>
+  <p>The extension stores two values in <code>chrome.storage.local</code> on your device:</p>
+  <ul>
+    <li><strong>argus_theme</strong> — your preferred toolbar color theme (dark or light)</li>
+    <li><strong>argus_placement</strong> — your preferred toolbar dock position (left, top, right, or bottom)</li>
+  </ul>
+  <p>These values stay on your device. They are never read by, sent to, or accessible by anyone other than the extension itself.</p>
+
+  <h2>Permissions explained</h2>
+  <p>Argus Inspector requests the following browser permissions, each used only for the purpose stated:</p>
+  <ul>
+    <li><strong>activeTab</strong> — to check whether the current page is a restricted URL (e.g. <code>chrome://</code>) before attempting to inject the toolbar.</li>
+    <li><strong>scripting</strong> — to inject the visual inspector toolbar into the active tab when you click the extension icon.</li>
+    <li><strong>storage</strong> — to save and restore your theme and dock position preferences locally.</li>
+    <li><strong>Access to all sites</strong> — the inspector must work on any web page you choose to inspect. No site content is read, copied, or transmitted.</li>
+  </ul>
+
+  <h2>Third parties</h2>
+  <p>Argus Inspector does not share any data with third parties. There are no analytics, tracking scripts, or external network requests of any kind.</p>
+
+  <h2>Children</h2>
+  <p>This extension does not target or knowingly collect information from children.</p>
+
+  <h2>Changes to this policy</h2>
+  <p>If this policy changes, the updated version will be posted at this URL with a new "Last updated" date.</p>
+
+  <div class="contact">
+    Questions? Open an issue on <a href="https://github.com/maskmanlucifer/argus" target="_blank" rel="noopener">github.com/maskmanlucifer/argus</a>
+    or reach the developer at <a href="https://maskmanlucifer.github.io/lucifer/" target="_blank" rel="noopener">maskmanlucifer.github.io/lucifer</a>.
+  </div>
+</div>
+
+</body>
+</html>
