@@ -2,7 +2,7 @@
 
 Lightweight design inspector for Chrome. Hover, pin, measure, and edit any element on any page — without opening DevTools.
 
-**[Add to Chrome](https://chromewebstore.google.com/detail/argus-inspector/EXTENSION_ID)** · **[Live page](https://maskmanlucifer.github.io/argus)**
+**[Add to Chrome](https://chromewebstore.google.com/detail/argus-inspector/amnfopnhghblhhmmmmdpkbkikmlebpkn)** · **[Live page](https://maskmanlucifer.github.io/argus)**
 
 ---
 
