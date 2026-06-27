@@ -5,6 +5,7 @@ import { SearchTool }     from '../tools/search.js';
 import { RulerTool }      from '../tools/ruler.js';
 import { OutlineTool }    from '../tools/outline.js';
 import { ZoomTool }       from '../tools/zoom.js';
+import { ColorTool }      from '../tools/color.js';
 
 const TOOLS = [
   {
@@ -42,6 +43,11 @@ const TOOLS = [
     desc: 'Zoom the page in or out. Use + and − to adjust in 10% steps.',
     icon: `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/><path d="M11 8v6M8 11h6"/></svg>`,
   },
+  {
+    id: 'color', title: 'Color Picker',
+    desc: 'Pick any color from the page. Shows HEX, RGB, and HSL values with one-click copy.',
+    icon: `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m2 22 1-1h3l9-9"/><path d="M3 21v-3l9-9"/><path d="m15 6 3.4-3.4a2.1 2.1 0 1 1 3 3L18 9l.4.4a2.1 2.1 0 1 1-3 3l-3.8-3.8"/></svg>`,
+  },
 ];
 
 const UTILITY_GUIDES = {
@@ -52,6 +58,10 @@ const UTILITY_GUIDES = {
   placement: {
     title: 'Move Toolbar',
     desc:  'Cycle the dock position: left → top → right → bottom.',
+  },
+  feedback: {
+    title: 'Send Feedback',
+    desc:  'Report a bug or request a feature — opens your email client.',
   },
 };
 
@@ -64,9 +74,10 @@ const PLACEMENT_ICONS = {
   bottom: `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="15" x2="21" y2="15"/></svg>`,
 };
 
-const SUN_ICON  = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2m-7.07-14.93 1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>`;
-const MOON_ICON = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>`;
-const CLOSE_ICON = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>`;
+const SUN_ICON      = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2m-7.07-14.93 1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>`;
+const MOON_ICON     = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>`;
+const CLOSE_ICON    = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>`;
+const FEEDBACK_ICON = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`;
 
 export class Toolbar {
   constructor({ shadow, container, host }) {
@@ -138,6 +149,19 @@ export class Toolbar {
     placeBtn.addEventListener('mouseleave', () => this._onLeave());
     this.rail.appendChild(placeBtn);
 
+    // Feedback
+    const feedbackBtn = document.createElement('button');
+    feedbackBtn.className = 'argus-btn';
+    feedbackBtn.id = 'argus-feedback-btn';
+    feedbackBtn.innerHTML = FEEDBACK_ICON;
+    feedbackBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      window.open('mailto:brightpixellabs@gmail.com?subject=Argus%20Inspector%20%E2%80%93%20Bug%20Report%20%2F%20Feature%20Request', '_blank');
+    });
+    feedbackBtn.addEventListener('mouseenter', () => this._onHover('feedback', feedbackBtn));
+    feedbackBtn.addEventListener('mouseleave', () => this._onLeave());
+    this.rail.appendChild(feedbackBtn);
+
     // Close
     const closeBtn = document.createElement('button');
     closeBtn.className = 'argus-btn';
@@ -170,6 +194,7 @@ export class Toolbar {
       ruler:    new RulerTool(this),
       outline:  new OutlineTool(this),
       zoom:     new ZoomTool(this),
+      color:    new ColorTool(this),
     };
 
     // Esc deactivates the active tool

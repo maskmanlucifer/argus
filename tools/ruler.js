@@ -186,8 +186,8 @@ export class RulerTool {
     const hasH = this.lines.some(l => l.orientation === 'horizontal');
     const hasV = this.lines.some(l => l.orientation === 'vertical');
     let secondLineLabel;
-    if (hasH && !hasV)      secondLineLabel = 'Add a <b>Vertical</b> line to measure the gap';
-    else if (hasV && !hasH) secondLineLabel = 'Add a <b>Horizontal</b> line to measure the gap';
+    if (hasH && !hasV)      secondLineLabel = 'Add another <b>Horizontal</b> line to measure the gap';
+    else if (hasV && !hasH) secondLineLabel = 'Add another <b>Vertical</b> line to measure the gap';
     else                    secondLineLabel = 'Add a <b>second</b> line (H or V)';
 
     const steps = [

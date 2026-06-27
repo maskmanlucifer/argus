@@ -1,9 +1,8 @@
 export class ColorTool {
   constructor(toolbar) {
-    this.tb        = toolbar;
-    this.panel     = null;
-    this.mode      = 'text'; // 'text' | 'bg'
-    this.palette   = [];
+    this.tb      = toolbar;
+    this.panel   = null;
+    this.palette = [];
     this._loadPalette();
   }
 
@@ -17,46 +16,40 @@ export class ColorTool {
     chrome.storage.local.set({ argus_palette: this.palette });
   }
 
-  activate() { this._showPanel(); }
-
-  deactivate() {
-    this.panel?.remove();
-    this.panel = null;
-  }
-
-  destroy() { this.deactivate(); }
+  activate()  { this._showPanel(); }
+  deactivate() { this.panel?.remove(); this.panel = null; }
+  destroy()    { this.deactivate(); }
 
   _showPanel() {
     if (this.panel) return;
     const p = document.createElement('div');
     p.className = `argus-panel theme-${this.tb.theme}`;
-
     p.innerHTML = `
-      <div class="panel-label">Color</div>
-      <div class="color-mode-row">
-        <button class="color-mode-btn ${this.mode === 'text' ? 'active' : ''}" data-mode="text">Text</button>
-        <button class="color-mode-btn ${this.mode === 'bg'   ? 'active' : ''}" data-mode="bg">Background</button>
-      </div>
-      <button class="eyedropper-btn">
-        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m2 22 1-1h3l9-9"/><path d="M3 21v-3l9-9"/><path d="m15 6 3.4-3.4a2.1 2.1 0 1 1 3 3L18 9l.4.4a2.1 2.1 0 1 1-3 3l-3.8-3.8"/></svg>
-        Pick color
+      <div class="panel-label">Color Picker</div>
+      <button class="color-pick-btn">
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m2 22 1-1h3l9-9"/><path d="M3 21v-3l9-9"/><path d="m15 6 3.4-3.4a2.1 2.1 0 1 1 3 3L18 9l.4.4a2.1 2.1 0 1 1-3 3l-3.8-3.8"/></svg>
+        Pick color from page
       </button>
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
-        <div class="palette-label">Palette</div>
-        <div id="argus-picked" style="font-size:11.5px;font-weight:600;opacity:0.7;display:flex;align-items:center;gap:5px;"></div>
+      <div class="color-result" style="display:none;">
+        <div class="color-swatch-large"></div>
+        <div class="color-values"></div>
+        <button class="color-save-btn">Save to palette</button>
       </div>
-      <div class="palette-grid"></div>
-      <div class="palette-empty" style="display:none;">No saved colors yet.</div>
+      <div class="palette-section">
+        <div class="palette-header">
+          <span class="palette-label">Saved</span>
+          <span class="palette-count"></span>
+        </div>
+        <div class="palette-grid"></div>
+        <div class="palette-empty">Pick a color to save it here.</div>
+      </div>
     `;
 
-    p.querySelectorAll('.color-mode-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        this.mode = btn.dataset.mode;
-        p.querySelectorAll('.color-mode-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === this.mode));
-      });
+    p.querySelector('.color-pick-btn').addEventListener('click', () => this._pick(p));
+    p.querySelector('.color-save-btn').addEventListener('click', () => {
+      const hex = p.querySelector('.color-swatch-large').dataset.color;
+      if (hex) this._saveColor(hex, p);
     });
-
-    p.querySelector('.eyedropper-btn').addEventListener('click', () => this._pick(p));
 
     this.panel = p;
     this.tb.shadow.appendChild(p);
@@ -66,56 +59,90 @@ export class ColorTool {
 
   async _pick(p) {
     if (!window.EyeDropper) {
-      alert('EyeDropper API not supported in this browser.');
+      const btn = p.querySelector('.color-pick-btn');
+      btn.textContent = 'Not supported in this browser';
+      btn.disabled = true;
       return;
     }
     try {
-      const dropper = new EyeDropper();
-      const result  = await dropper.open();
-      const color   = result.sRGBHex;
-
-      // Show picked color
-      const pickedEl = p.querySelector('#argus-picked');
-      pickedEl.innerHTML = `
-        <span class="swatch" style="background:${color};width:12px;height:12px;border-radius:3px;"></span>
-        ${color}
-        <button style="border:none;background:rgba(33,112,244,0.12);color:#2170F4;border-radius:4px;padding:1px 6px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;">Save</button>
-      `;
-      pickedEl.querySelector('button').addEventListener('click', () => this._saveColor(color));
-
+      const result = await new EyeDropper().open();
+      this._showResult(p, result.sRGBHex);
     } catch {
-      // User cancelled
+      // user cancelled — no-op
     }
   }
 
-  _saveColor(color) {
-    if (!this.palette.includes(color)) {
-      this.palette.unshift(color);
+  _showResult(p, hex) {
+    const { r, g, b } = this._hexToRgb(hex);
+    const { h, s, l } = this._rgbToHsl(r, g, b);
+    const rgb  = `rgb(${r}, ${g}, ${b})`;
+    const hsl  = `hsl(${h}, ${s}%, ${l}%)`;
+
+    const result = p.querySelector('.color-result');
+    result.style.display = '';
+
+    const swatch = result.querySelector('.color-swatch-large');
+    swatch.style.background = hex;
+    swatch.dataset.color = hex;
+
+    result.querySelector('.color-values').innerHTML = [
+      { label: 'HEX', value: hex },
+      { label: 'RGB', value: rgb },
+      { label: 'HSL', value: hsl },
+    ].map(({ label, value }) => `
+      <div class="color-value-row">
+        <span class="color-value-label">${label}</span>
+        <span class="color-value-text">${value}</span>
+        <button class="color-copy-btn" data-value="${value}" title="Copy">
+          <svg viewBox="0 0 16 16" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="5" y="5" width="8" height="8" rx="1.5"/><path d="M3 11H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v1"/></svg>
+        </button>
+      </div>
+    `).join('');
+
+    result.querySelectorAll('.color-copy-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        navigator.clipboard.writeText(btn.dataset.value);
+        btn.innerHTML = `<svg viewBox="0 0 16 16" width="11" height="11" fill="none" stroke="#0ABE51" stroke-width="2" stroke-linecap="round"><polyline points="2,8 6,12 14,4"/></svg>`;
+        setTimeout(() => {
+          btn.innerHTML = `<svg viewBox="0 0 16 16" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="5" y="5" width="8" height="8" rx="1.5"/><path d="M3 11H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v1"/></svg>`;
+        }, 1500);
+      });
+    });
+  }
+
+  _saveColor(hex, p) {
+    if (!this.palette.includes(hex)) {
+      this.palette.unshift(hex);
       if (this.palette.length > 24) this.palette.pop();
       this._savePalette();
-      this._renderPalette();
     }
+    const btn = p.querySelector('.color-save-btn');
+    btn.textContent = 'Saved ✓';
+    setTimeout(() => { btn.textContent = 'Save to palette'; }, 1500);
+    this._renderPalette();
   }
 
   _renderPalette() {
     if (!this.panel) return;
     const grid  = this.panel.querySelector('.palette-grid');
     const empty = this.panel.querySelector('.palette-empty');
+    const count = this.panel.querySelector('.palette-count');
     grid.innerHTML = '';
-    empty.style.display = this.palette.length ? 'none' : 'block';
+    const has = this.palette.length > 0;
+    empty.style.display = has ? 'none' : '';
+    count.textContent   = has ? `${this.palette.length}` : '';
 
     this.palette.forEach(color => {
       const sw = document.createElement('div');
       sw.className = 'palette-swatch';
       sw.style.background = color;
-      sw.title = color;
+      sw.title = `${color} — click to copy, right-click to remove`;
       sw.addEventListener('click', () => {
-        // Copy to clipboard
         navigator.clipboard.writeText(color);
-        sw.style.transform = 'scale(1.3)';
-        setTimeout(() => sw.style.transform = '', 200);
+        this._showResult(this.panel, color);
+        sw.classList.add('copied');
+        setTimeout(() => sw.classList.remove('copied'), 300);
       });
-      // Right-click to delete
       sw.addEventListener('contextmenu', (e) => {
         e.preventDefault();
         this.palette = this.palette.filter(c => c !== color);
@@ -132,18 +159,40 @@ export class ColorTool {
     const p    = this.tb.placement;
     const gap  = 12;
     let top, left;
-
-    if (p === 'left')   { left = rail.right + gap; top = rail.top; }
-    else if (p === 'right')  { left = rail.left - 260 - gap; top = rail.top; }
-    else if (p === 'top')    { top = rail.bottom + gap; left = Math.max(8, rail.right - 260); }
-    else                     { top = rail.top - 240 - gap; left = Math.max(8, rail.right - 260); }
-
-    top  = Math.max(8, Math.min(top,  window.innerHeight - 300));
-    left = Math.max(8, Math.min(left, window.innerWidth  - 268));
-
+    if (p === 'left')        { left = rail.right  + gap;       top  = rail.top; }
+    else if (p === 'right')  { left = rail.left   - 244 - gap; top  = rail.top; }
+    else if (p === 'top')    { top  = rail.bottom + gap;        left = Math.max(8, rail.right - 244); }
+    else                     { top  = rail.top    - 280 - gap;  left = Math.max(8, rail.right - 244); }
+    top  = Math.max(8, Math.min(top,  window.innerHeight - 320));
+    left = Math.max(8, Math.min(left, window.innerWidth  - 252));
     Object.assign(this.panel.style, { top: `${top}px`, left: `${left}px` });
   }
 
   setTheme(theme) { this.panel?.setAttribute('class', `argus-panel theme-${theme}`); }
   setPlacement()  { this._positionPanel(); }
+
+  // ── Color conversion helpers ──
+  _hexToRgb(hex) {
+    const n = parseInt(hex.slice(1), 16);
+    return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+  }
+
+  _rgbToHsl(r, g, b) {
+    r /= 255; g /= 255; b /= 255;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b);
+    let h, s;
+    const l = (max + min) / 2;
+    if (max === min) {
+      h = s = 0;
+    } else {
+      const d = max - min;
+      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+      switch (max) {
+        case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+        case g: h = ((b - r) / d + 2) / 6; break;
+        default: h = ((r - g) / d + 4) / 6;
+      }
+    }
+    return { h: Math.round(h * 360), s: Math.round(s * 100), l: Math.round(l * 100) };
+  }
 }

@@ -66,8 +66,6 @@ export class OutlineTool {
   _handleHover(el) {
     if (!el || el === document.documentElement || el === document.body) return;
     if (el === this.tb.host) return;
-    // Suppress spacing overlays while another tool (ruler, inspect, etc.) is active
-    if (this.tb.activeTool) return;
 
     this._clearSpacingOverlays();
 
