@@ -29,6 +29,21 @@ function setState(active) {
 
 getState().then(setState);
 
+// Show the current keyboard shortcut (reflects any user rebinds in chrome://extensions/shortcuts)
+chrome.commands.getAll(commands => {
+  const cmd = commands.find(c => c.name === 'toggle-argus');
+  const hint = document.getElementById('shortcut-hint');
+  if (!hint) return;
+  if (cmd?.shortcut) {
+    const keys = cmd.shortcut.split('+').map(k =>
+      `<span class="shortcut-key">${k}</span>`
+    ).join(' ');
+    hint.innerHTML = `${keys} to toggle`;
+  } else {
+    hint.innerHTML = `<a href="chrome://extensions/shortcuts" style="color:inherit;opacity:0.6;font-size:11px;">Set a shortcut</a>`;
+  }
+});
+
 btn.addEventListener('click', async () => {
   const tab = await getActiveTab();
   if (!tab?.id || RESTRICTED.test(tab.url ?? '')) { window.close(); return; }
