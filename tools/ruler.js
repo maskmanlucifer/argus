@@ -9,22 +9,35 @@ const PINNED_COLOR = '#111111';
 
 export class RulerTool {
   constructor(toolbar) {
-    this.tb          = toolbar;
-    this.panel       = null;
-    this.lines       = [];
-    this.selected    = null;
-    this._nextId     = 1;
-    this._colorIdx   = 0;
-    this.gapConnector = null;
-    this.gapBadge    = null;
+    this.tb              = toolbar;
+    this.panel           = null;
+    this.lines           = [];
+    this.selected        = null;
+    this._nextId         = 1;
+    this._colorIdx       = 0;
+    this.gapConnector    = null;
+    this.gapBadge        = null;
+    this.guideEl         = null;
+    this._guideDismissed = undefined; // undefined = not yet loaded from storage
+    this._hasDragged     = false;     // advances guide past the drag step
   }
 
   activate() {
-    this._showPanel();
+    this._active = true;
     this._createGapConnector();
+    if (this._guideDismissed !== undefined) {
+      this._showPanel();
+    } else {
+      chrome.storage.local.get('argus_ruler_guide_dismissed', (data) => {
+        if (!this._active) return; // deactivated before storage resolved
+        this._guideDismissed = !!data.argus_ruler_guide_dismissed;
+        this._showPanel();
+      });
+    }
   }
 
   deactivate() {
+    this._active = false;
     this.panel?.remove();
     this.panel = null;
     // Lines stay visible; destroyed on close
@@ -77,11 +90,11 @@ export class RulerTool {
     const rail = this.tb.rail.getBoundingClientRect();
 
     if (hovLine.orientation === 'horizontal') {
-      // Center the vertical connector in the horizontal space not occupied by the rail
+      // Slightly off-center — near the chip row but not overlapping it (chips sit at window.innerWidth/2)
       let cx;
-      if      (p === 'left')  cx = (rail.right + window.innerWidth) / 2;
-      else if (p === 'right') cx = rail.left / 2;
-      else                    cx = window.innerWidth / 2;
+      if      (p === 'left')  cx = (rail.right + window.innerWidth) / 2 - 100;
+      else if (p === 'right') cx = rail.left / 2 + 100;
+      else                    cx = window.innerWidth / 2 - 100;
 
       el.className = 'ruler-gap-connector vertical active';
       Object.assign(el.style, {
@@ -91,11 +104,11 @@ export class RulerTool {
         width:  '24px',
       });
     } else {
-      // Center the horizontal connector in the vertical space not occupied by the rail
+      // Same logic for vertical lines / horizontal connector
       let cy;
-      if      (p === 'top')    cy = (rail.bottom + window.innerHeight) / 2;
-      else if (p === 'bottom') cy = rail.top / 2;
-      else                     cy = window.innerHeight / 2;
+      if      (p === 'top')    cy = (rail.bottom + window.innerHeight) / 2 - 80;
+      else if (p === 'bottom') cy = rail.top / 2 + 80;
+      else                     cy = window.innerHeight / 2 - 80;
 
       el.className = 'ruler-gap-connector horizontal active';
       Object.assign(el.style, {
@@ -139,6 +152,64 @@ export class RulerTool {
     this.tb.shadow.appendChild(p);
     this.panel = p;
     this._positionPanel();
+    if (!this._guideDismissed) this._injectGuide();
+    this._updateGuide();
+  }
+
+  // Creates the guide section and appends it to the panel.
+  // Safe to call multiple times — bails if guide already exists or panel is gone.
+  _injectGuide() {
+    if (!this.panel || this.guideEl) return;
+    const guide = document.createElement('div');
+    guide.className = 'ruler-guide';
+    guide.innerHTML = `<div class="ruler-guide-text"></div><button class="ruler-guide-close" title="Dismiss">✕</button>`;
+    guide.querySelector('.ruler-guide-close').addEventListener('click', () => this._dismissGuide());
+    this.panel.appendChild(guide);
+    this.guideEl = guide.querySelector('.ruler-guide-text');
+  }
+
+  _updateGuide() {
+    if (!this.guideEl) return;
+
+    // Determine current incomplete step (0–4). Each step stays active until the
+    // user actually completes it — the guide never skips forward prematurely.
+    let step;
+    if (this.lines.length === 0)      step = 0; // haven't added a line yet
+    else if (!this._hasDragged)       step = 1; // added but not positioned
+    else if (this.lines.length < 2)   step = 2; // need a second line to measure
+    else if (this.selected == null)   step = 3; // have 2 lines but none pinned
+    else                              step = 4; // pinned — hover another for gap
+
+    const PIN_ICON = `<span class="guide-em"><svg class="guide-icon" viewBox="0 0 16 16" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="8" cy="8" r="3"/><line x1="8" y1="1" x2="8" y2="4"/><line x1="8" y1="12" x2="8" y2="15"/><line x1="1" y1="8" x2="4" y2="8"/><line x1="12" y1="8" x2="15" y2="8"/></svg></span>`;
+
+    // Smart second-line suggestion: tell the user which orientation they're missing
+    const hasH = this.lines.some(l => l.orientation === 'horizontal');
+    const hasV = this.lines.some(l => l.orientation === 'vertical');
+    let secondLineLabel;
+    if (hasH && !hasV)      secondLineLabel = 'Add a <b>Vertical</b> line to measure the gap';
+    else if (hasV && !hasH) secondLineLabel = 'Add a <b>Horizontal</b> line to measure the gap';
+    else                    secondLineLabel = 'Add a <b>second</b> line (H or V)';
+
+    const steps = [
+      { label: 'Click <b>H</b> or <b>V</b> to add a guide line' },
+      { label: 'Drag the line to position it' },
+      { label: secondLineLabel },
+      { label: `Hover a line → click ${PIN_ICON} to pin it` },
+      { label: 'Hover the other line to see the gap' },
+    ];
+
+    this.guideEl.innerHTML = steps.map((s, i) => {
+      const cls = i < step ? 'guide-step past' : i === step ? 'guide-step active' : 'guide-step next';
+      return `<div class="${cls}"><span class="step-dot">${i < step ? '✓' : i + 1}</span><span class="step-text">${s.label}</span></div>`;
+    }).join('');
+  }
+
+  _dismissGuide() {
+    this._guideDismissed = true;
+    chrome.storage.local.set({ argus_ruler_guide_dismissed: true });
+    const guideWrapper = this.panel?.querySelector('.ruler-guide');
+    if (guideWrapper) guideWrapper.remove();
+    this.guideEl = null;
   }
 
   _positionPanel() {
@@ -231,6 +302,7 @@ export class RulerTool {
     this._attachDrag(line);
     this._attachHoverGap(line);
     this._updateStackState();
+    this._updateGuide();
   }
 
   // ── Position ──
@@ -340,6 +412,7 @@ export class RulerTool {
       const line = this._getLine(id);
       if (line) { line.el.classList.remove('selected'); this._applyColor(line, false); this._setHint(line, false); }
       this.selected = null;
+      this._updateGuide();
       return;
     }
     this.selected = id;
@@ -349,6 +422,7 @@ export class RulerTool {
       this._applyColor(line, true);
       this._setHint(line, true);
     }
+    this._updateGuide();
   }
 
   _nudge(id, delta) {
@@ -400,10 +474,15 @@ export class RulerTool {
         const current = line.orientation === 'horizontal' ? e.clientY : e.clientX;
         this._moveLine(line, startPos + (current - startMouse));
       };
-      const onUp = () => {
+      const onUp = (e) => {
         document.body.style.userSelect = '';
         document.removeEventListener('mousemove', onMove);
         document.removeEventListener('mouseup',   onUp);
+        const current = line.orientation === 'horizontal' ? e.clientY : e.clientX;
+        if (Math.abs(current - startMouse) > 2) {
+          this._hasDragged = true;
+          this._updateGuide();
+        }
       };
 
       document.addEventListener('mousemove', onMove);
@@ -418,15 +497,19 @@ export class RulerTool {
     line.el.remove();
     this.lines = this.lines.filter(l => l.id !== id);
     if (this.selected === id) this.selected = null;
-    this._hideGapConnector();
+    this._hideGapConnector(); // always hide — removing any line may leave the connector stale
+    if (this.lines.length === 0) this._hasDragged = false;
     this._updateStackState();
+    this._updateGuide();
   }
 
   _clearAll() {
     this.lines.forEach(l => l.el.remove());
     this.lines = [];
-    this.selected = null;
+    this.selected    = null;
+    this._hasDragged = false;
     this._hideGapConnector();
+    this._updateGuide();
   }
 
   // ── Helpers ──
