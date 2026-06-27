@@ -29,6 +29,15 @@ function setState(active) {
 
 getState().then(setState);
 
+// Platform-aware display names for modifier keys
+const KEY_LABEL = {
+  'Command': '⌘ Cmd',
+  'Ctrl':    'Ctrl',
+  'Alt':     '⌥ Opt',
+  'Shift':   '⇧ Shift',
+  'MacCtrl': '⌃ Ctrl',
+};
+
 // Show the current keyboard shortcut (reflects any user rebinds in chrome://extensions/shortcuts)
 chrome.commands.getAll(commands => {
   const cmd = commands.find(c => c.name === 'toggle-argus');
@@ -36,8 +45,8 @@ chrome.commands.getAll(commands => {
   if (!hint) return;
   if (cmd?.shortcut) {
     const keys = cmd.shortcut.split('+').map(k =>
-      `<span class="shortcut-key">${k}</span>`
-    ).join(' ');
+      `<span class="shortcut-key">${KEY_LABEL[k] ?? k}</span>`
+    ).join('');
     hint.innerHTML = `${keys} to toggle`;
   } else {
     hint.innerHTML = `<a href="chrome://extensions/shortcuts" style="color:inherit;opacity:0.6;font-size:11px;">Set a shortcut</a>`;

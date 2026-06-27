@@ -28,8 +28,8 @@
   "commands": {
     "toggle-argus": {
       "suggested_key": {
-        "default": "Alt+Shift+A",
-        "mac":     "Alt+Shift+A"
+        "default": "Ctrl+Shift+A",
+        "mac":     "Command+Shift+A"
       },
       "description": "Toggle Argus Inspector"
     }
