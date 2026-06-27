@@ -39,9 +39,14 @@ export class SearchTool {
     const p = document.createElement('div');
     p.className = `argus-panel theme-${this.tb.theme}`;
 
+    const CHIPS = ['img', 'a', 'button', 'input'];
+
     p.innerHTML = `
       <div class="panel-label">Search</div>
       <input class="argus-search-input" placeholder="Text or CSS selector…" autocomplete="off" spellcheck="false"/>
+      <div class="search-chips">
+        ${CHIPS.map(c => `<button class="search-chip" data-q="${c}">${c}</button>`).join('')}
+      </div>
       <div class="search-count"></div>
       <div class="search-nav">
         <button class="search-nav-btn" id="argus-s-prev">↑ Prev</button>
@@ -49,11 +54,21 @@ export class SearchTool {
       </div>
     `;
 
-    this.input = p.querySelector('.argus-search-input');
+    this.input   = p.querySelector('.argus-search-input');
     this.countEl = p.querySelector('.search-count');
     this.input.addEventListener('input', () => this._search(this.input.value));
     p.querySelector('#argus-s-prev').addEventListener('click', () => this._stepMatch(-1));
     p.querySelector('#argus-s-next').addEventListener('click', () => this._stepMatch(1));
+
+    p.querySelectorAll('.search-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        const q = chip.dataset.q;
+        this.input.value = q;
+        this._search(q);
+        this._updateChips(q);
+        this.input.focus();
+      });
+    });
 
     this.tb.shadow.appendChild(p);
     this.panel = p;
@@ -77,7 +92,14 @@ export class SearchTool {
     Object.assign(this.panel.style, { top: `${top}px`, left: `${left}px` });
   }
 
+  _updateChips(activeQuery) {
+    this.panel?.querySelectorAll('.search-chip').forEach(chip => {
+      chip.classList.toggle('active', chip.dataset.q === activeQuery);
+    });
+  }
+
   _search(query) {
+    this._updateChips(query);
     this._clearHighlights();
     this.matches = [];
     this.current = -1;
