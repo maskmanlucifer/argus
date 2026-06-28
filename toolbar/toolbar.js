@@ -362,7 +362,7 @@ export class Toolbar {
 
   // ── Visibility ──
   show()      { this._visible = true;  this.rail?.classList.remove('hidden'); }
-  hide()      { this._visible = false; this.rail?.classList.add('hidden'); }
+  hide()      { this._visible = false; this._deactivate(false); this.rail?.classList.add('hidden'); }
   isVisible() { return this._visible; }
   toggle()    { this._visible ? this.hide() : this.show(); }
 

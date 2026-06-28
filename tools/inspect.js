@@ -1,7 +1,5 @@
 import { isArgus } from './utils.js';
 
-const HOVER_DELAY = 900; // ms before panel shows on hover dwell
-
 export class InspectTool {
   constructor(toolbar) {
     this.tb             = toolbar;
@@ -11,7 +9,6 @@ export class InspectTool {
     this.panel          = null;
     this._active        = false;
     this._currentHover  = null;
-    this._hoverTimer    = null;
     this._onMove        = this._onMouseMove.bind(this);
     this._onClick       = this._onMouseClick.bind(this);
   }
@@ -33,8 +30,6 @@ export class InspectTool {
 
   deactivate() {
     this._active = false;
-    clearTimeout(this._hoverTimer);
-    this._hoverTimer = null;
     document.removeEventListener('mousemove', this._onMove,  true);
     document.removeEventListener('click',     this._onClick, true);
     window.removeEventListener('scroll', this._onScroll, { capture: true });
@@ -50,7 +45,6 @@ export class InspectTool {
   onEsc() {
     if (this.pinnedEl) {
       this.pinnedEl = null;
-      this._currentHover = null; // clear so next hover on the same element re-opens panel
       if (this.pinnedHighlight) this.pinnedHighlight.style.display = 'none';
       this._removePanel();
     }
@@ -96,26 +90,7 @@ export class InspectTool {
 
     // Blue hover highlight always follows the cursor
     this._placeEl(this.hoverHighlight, target);
-
-    if (this._currentHover === target) return;
     this._currentHover = target;
-
-    // Don't update panel while an element is pinned
-    if (this.pinnedEl) return;
-
-    clearTimeout(this._hoverTimer);
-
-    if (this.panel) {
-      // Panel already open in hover mode — update instantly as cursor moves
-      this._showPanel(target);
-    } else {
-      // First dwell — wait before showing panel
-      this._hoverTimer = setTimeout(() => {
-        if (this._currentHover === target && this._active && !this.pinnedEl) {
-          this._showPanel(target);
-        }
-      }, HOVER_DELAY);
-    }
   }
 
   _onMouseClick(e) {
@@ -126,17 +101,15 @@ export class InspectTool {
     const target = this._realTarget(e.target);
     if (!target) return;
 
-    clearTimeout(this._hoverTimer);
-
     if (this.pinnedEl === target) {
-      // Unpin — go back to hover mode
+      // Click same element again — close panel
       this.pinnedEl = null;
       this.pinnedHighlight.style.display = 'none';
       this._removePanel();
       return;
     }
 
-    // Pin this element
+    // Switch to this element (works whether or not a panel was already open)
     this.pinnedEl = target;
     this._placeEl(this.pinnedHighlight, target);
     this.pinnedHighlight.style.display = 'block';
@@ -170,7 +143,7 @@ export class InspectTool {
     const p = document.createElement('div');
     p.className = `argus-panel theme-${this.tb.theme}`;
     p.innerHTML = `
-      <div class="panel-label">Inspect${this.pinnedEl ? ' · pinned' : ''}</div>
+      <div class="panel-label">Inspect</div>
       ${rows.map(r => `
         <div class="panel-row">
           <span class="panel-key">${r.k}</span>
@@ -192,24 +165,45 @@ export class InspectTool {
     if (!this.panel) return;
     const r   = el.getBoundingClientRect();
     const pw  = 220;
-    const gap = 6;
-    const placement = this.tb.placement;
+    const ph  = this.panel.offsetHeight;
+    const gap = 8;
+    const vw  = window.innerWidth;
+    const vh  = window.innerHeight;
 
-    let top, left;
-    if (placement === 'left') {
-      left = r.right + gap; top = r.top;
-    } else if (placement === 'right') {
-      left = r.left - pw - gap; top = r.top;
-    } else if (placement === 'top') {
-      top = r.bottom + gap; left = r.left;
-    } else {
-      top = r.top - this.panel.offsetHeight - gap; left = r.left;
-    }
+    // Available space on each side of the element
+    const space = {
+      right:  vw - r.right - gap,
+      left:   r.left - gap,
+      bottom: vh - r.bottom - gap,
+      top:    r.top - gap,
+    };
 
-    const ph = this.panel.offsetHeight;
-    top  = Math.max(8, Math.min(top,  window.innerHeight - ph - 8));
-    left = Math.max(8, Math.min(left, window.innerWidth  - pw - 8));
+    // Candidate placements: { side, fits, top, left }
+    const candidates = [
+      { side: 'right',  fits: space.right  >= pw && space.bottom + r.height >= ph,
+        left: r.right + gap,
+        top:  Math.max(8, Math.min(r.top, vh - ph - 8)) },
+      { side: 'left',   fits: space.left   >= pw && space.bottom + r.height >= ph,
+        left: r.left - pw - gap,
+        top:  Math.max(8, Math.min(r.top, vh - ph - 8)) },
+      { side: 'bottom', fits: space.bottom >= ph && space.right  + r.width  >= pw,
+        left: Math.max(8, Math.min(r.left, vw - pw - 8)),
+        top:  r.bottom + gap },
+      { side: 'top',    fits: space.top    >= ph && space.right  + r.width  >= pw,
+        left: Math.max(8, Math.min(r.left, vw - pw - 8)),
+        top:  r.top - ph - gap },
+    ];
 
+    // Pick first side that fully fits; fall back to the side with most space
+    const best = candidates.find(c => c.fits) ||
+      candidates.reduce((a, b) => {
+        const aSpace = a.side === 'right' || a.side === 'left' ? space[a.side] : space[a.side];
+        const bSpace = b.side === 'right' || b.side === 'left' ? space[b.side] : space[b.side];
+        return bSpace > aSpace ? b : a;
+      });
+
+    const top  = Math.max(8, Math.min(best.top,  vh - ph - 8));
+    const left = Math.max(8, Math.min(best.left, vw - pw - 8));
     Object.assign(this.panel.style, { top: `${top}px`, left: `${left}px` });
   }
 

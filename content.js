@@ -42,5 +42,14 @@
     else mount();
   };
 
+  // Fallback keyboard shortcut (⌥⇧A / Alt+Shift+A) — works even when Chrome
+  // hasn't auto-registered the suggested_key from the manifest.
+  document.addEventListener('keydown', (e) => {
+    if (e.altKey && e.shiftKey && !e.ctrlKey && !e.metaKey && e.code === 'KeyA') {
+      e.preventDefault();
+      window.__argusToggle();
+    }
+  }, true);
+
   window.__argusIsVisible = () => window.__argus_toolbar?.isVisible() ?? false;
 })();
