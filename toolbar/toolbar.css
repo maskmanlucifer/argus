@@ -241,7 +241,7 @@
 /* ── Ruler lines ── */
 .argus-ruler-line {
   position: fixed;
-  z-index: 2147483644;
+  z-index: 2147483646;
   pointer-events: all;
   cursor: move;
 }
