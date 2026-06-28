@@ -217,11 +217,23 @@ export class RulerTool {
     const rail = this.tb.rail.getBoundingClientRect();
     const placement = this.tb.placement;
     const gap = 6;
+    const M   = 8; // min margin from viewport edges
+
+    // Place at 0,0 first so getBoundingClientRect gives true intrinsic size
+    Object.assign(this.panel.style, { top: '0px', left: '0px' });
+    const pw = this.panel.getBoundingClientRect().width;
+    const ph = this.panel.getBoundingClientRect().height;
+
     let top, left;
-    if (placement === 'left')        { left = rail.right + gap; top = rail.top; }
-    else if (placement === 'right')  { left = rail.left - 220 - gap; top = rail.top; }
-    else if (placement === 'top')    { top = rail.bottom + gap; left = Math.max(8, rail.left); }
-    else                             { top = rail.top - 170 - gap; left = Math.max(8, rail.left); }
+    if (placement === 'left')        { left = rail.right + gap;      top = rail.top; }
+    else if (placement === 'right')  { left = rail.left - pw - gap;  top = rail.top; }
+    else if (placement === 'top')    { top  = rail.bottom + gap;     left = rail.left; }
+    else                             { top  = rail.top - ph - gap;   left = rail.left; }
+
+    // Clamp so the panel never bleeds outside the viewport
+    left = Math.max(M, Math.min(left, window.innerWidth  - pw - M));
+    top  = Math.max(M, Math.min(top,  window.innerHeight - ph - M));
+
     Object.assign(this.panel.style, { top: `${top}px`, left: `${left}px` });
   }
 

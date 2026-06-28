@@ -158,13 +158,20 @@ export class ColorTool {
     const rail = this.tb.rail.getBoundingClientRect();
     const p    = this.tb.placement;
     const gap  = 12;
+    const M    = 8;
+
+    Object.assign(this.panel.style, { top: '0px', left: '0px' });
+    const pw = this.panel.getBoundingClientRect().width;
+    const ph = this.panel.getBoundingClientRect().height;
+
     let top, left;
-    if (p === 'left')        { left = rail.right  + gap;       top  = rail.top; }
-    else if (p === 'right')  { left = rail.left   - 244 - gap; top  = rail.top; }
-    else if (p === 'top')    { top  = rail.bottom + gap;        left = Math.max(8, rail.right - 244); }
-    else                     { top  = rail.top    - 280 - gap;  left = Math.max(8, rail.right - 244); }
-    top  = Math.max(8, Math.min(top,  window.innerHeight - 320));
-    left = Math.max(8, Math.min(left, window.innerWidth  - 252));
+    if (p === 'left')        { left = rail.right + gap;      top  = rail.top; }
+    else if (p === 'right')  { left = rail.left - pw - gap;  top  = rail.top; }
+    else if (p === 'top')    { top  = rail.bottom + gap;     left = rail.right - pw; }
+    else                     { top  = rail.top - ph - gap;   left = rail.right - pw; }
+
+    left = Math.max(M, Math.min(left, window.innerWidth  - pw - M));
+    top  = Math.max(M, Math.min(top,  window.innerHeight - ph - M));
     Object.assign(this.panel.style, { top: `${top}px`, left: `${left}px` });
   }
 
