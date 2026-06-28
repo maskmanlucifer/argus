@@ -96,7 +96,7 @@ export class Toolbar {
   async _loadState() {
     const data = await chrome.storage.local.get(['argus_theme', 'argus_placement']);
     this.theme     = data.argus_theme     || 'dark';
-    this.placement = data.argus_placement || 'left';
+    this.placement = data.argus_placement || 'right';
   }
 
   _saveState() {
@@ -224,6 +224,7 @@ export class Toolbar {
 
   // ── Tool activation ──
   _selectTool(id) {
+    this._onLeave(); // always dismiss any pending/visible hover tooltip on click
     if (this.activeTool === id) {
       this._deactivate();
       return;

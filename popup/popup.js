@@ -34,9 +34,8 @@ chrome.commands.getAll(commands => {
   const cmd = commands.find(c => c.name === 'toggle-argus');
   const hint = document.getElementById('shortcut-hint');
   if (!hint) return;
-  if (cmd?.shortcut) {
-    hint.innerHTML = `<span class="shortcut-key">${cmd.shortcut}</span> to toggle`;
-  }
+  const shortcut = cmd?.shortcut || (navigator.platform.toUpperCase().includes('MAC') ? '⌥⇧A' : 'Alt+Shift+A');
+  hint.innerHTML = `<span class="shortcut-key">${shortcut}</span> to toggle`;
 });
 
 btn.addEventListener('click', async () => {

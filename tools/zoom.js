@@ -15,7 +15,7 @@ export class ZoomTool {
     this._active = false;
     this.panel?.remove();
     this.panel = null;
-    document.body.style.zoom = '';
+    this._clearZoom();
     this._zoom = 1.0;
   }
 
@@ -24,7 +24,12 @@ export class ZoomTool {
    */
   destroy() {
     this.deactivate();
-    document.body.style.zoom = '';
+    this._clearZoom();
+  }
+
+  _clearZoom() {
+    document.body.style.transform = '';
+    document.body.style.transformOrigin = '';
   }
 
   onEsc() {}
@@ -60,7 +65,12 @@ export class ZoomTool {
 
   _set(level) {
     this._zoom = Math.max(0.25, Math.min(3.0, Math.round(level * 10) / 10));
-    document.body.style.zoom = this._zoom === 1.0 ? '' : this._zoom;
+    if (this._zoom === 1.0) {
+      this._clearZoom();
+    } else {
+      document.body.style.transformOrigin = 'top center';
+      document.body.style.transform = `scale(${this._zoom})`;
+    }
     if (this.panel) {
       this._renderPanel(this.panel);
       this._positionPanel();
@@ -72,11 +82,20 @@ export class ZoomTool {
     const rail = this.tb.rail.getBoundingClientRect();
     const p    = this.tb.placement;
     const gap  = 6;
+    const M    = 8;
+
+    Object.assign(this.panel.style, { top: '0px', left: '0px' });
+    const pw = this.panel.getBoundingClientRect().width;
+    const ph = this.panel.getBoundingClientRect().height;
+
     let top, left;
-    if (p === 'left')        { left = rail.right + gap;       top  = rail.top; }
-    else if (p === 'right')  { left = rail.left - 140 - gap;  top  = rail.top; }
-    else if (p === 'top')    { top  = rail.bottom + gap;       left = Math.max(8, rail.right - 140); }
-    else                     { top  = rail.top - 150 - gap;   left = Math.max(8, rail.right - 140); }
+    if (p === 'left')        { left = rail.right + gap;     top  = rail.top; }
+    else if (p === 'right')  { left = rail.left - pw - gap; top  = rail.top; }
+    else if (p === 'top')    { top  = rail.bottom + gap;    left = rail.right - pw; }
+    else                     { top  = rail.top - ph - gap;  left = rail.right - pw; }
+
+    left = Math.max(M, Math.min(left, window.innerWidth  - pw - M));
+    top  = Math.max(M, Math.min(top,  window.innerHeight - ph - M));
     Object.assign(this.panel.style, { top: `${top}px`, left: `${left}px` });
   }
 

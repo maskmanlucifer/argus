@@ -608,9 +608,15 @@
   border-width: 1px;
 }
 .argus-highlight.search-current {
-  border-color: #F5A623;
-  background: rgba(245,166,35,0.16);
+  border-color: #2170F4;
+  background: rgba(33,112,244,0.15);
   border-width: 2px;
+  box-shadow: 0 0 0 3px rgba(33,112,244,0.25);
+  animation: argus-search-pulse 1.1s ease-in-out infinite;
+}
+@keyframes argus-search-pulse {
+  0%, 100% { box-shadow: 0 0 0 3px rgba(33,112,244,0.25); }
+  50%       { box-shadow: 0 0 0 6px rgba(33,112,244,0.08); }
 }
 
 /* ── Color picker panel ── */
