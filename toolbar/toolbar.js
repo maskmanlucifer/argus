@@ -261,6 +261,7 @@ export class Toolbar {
 
   _showGuide(id, btn) {
     if (this.activeTool === id) return;
+    if (Object.values(this.tools).some(t => t.panel)) return;
     const data = TOOLS.find(x => x.id === id) || UTILITY_GUIDES[id];
     if (!data || !btn || !this.guide) return;
 
