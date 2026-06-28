@@ -403,6 +403,50 @@
       line-height: 1.55;
     }
 
+    /* ── Shortcut filler card ── */
+    .tool-card--shortcut {
+      background: var(--surface);
+      justify-content: center;
+      gap: 0.35rem;
+    }
+    .shortcut-eyebrow {
+      font-size: 0.6875rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--accent);
+      margin-bottom: 4px;
+    }
+    .shortcut-keys {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .sk-chip {
+      font-family: var(--mono);
+      font-size: 0.8125rem;
+      font-weight: 700;
+      background: var(--accent-lt);
+      border: 1px solid #c7d9fb;
+      color: var(--accent);
+      border-radius: 5px;
+      padding: 2px 7px;
+      line-height: 1.4;
+    }
+    .sk-sep {
+      font-size: 0.75rem;
+      color: var(--muted);
+      font-weight: 500;
+    }
+    .shortcut-sub {
+      font-size: 0.75rem;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+    .shortcut-keys--win, .shortcut-sub--win {
+      margin-top: 6px;
+    }
+
     /* ── Inspect card demo ── */
     .inspect-demo {
       margin-top: 10px;
@@ -786,6 +830,17 @@
     <div class="tool-card">
       <div class="tool-row"><span class="key">Z</span><span class="tool-name">Zoom</span></div>
       <p class="tool-desc">Scale the page in or out in 10% steps. Resets cleanly when you switch to another tool.</p>
+    </div>
+    <div class="tool-card tool-card--shortcut">
+      <p class="shortcut-eyebrow">Keyboard shortcut</p>
+      <div class="shortcut-keys">
+        <span class="sk-chip">⌘</span><span class="sk-sep">+</span><span class="sk-chip">⇧</span><span class="sk-sep">+</span><span class="sk-chip">A</span>
+      </div>
+      <p class="shortcut-sub">Mac · toggle the inspector on any page without opening the popup.</p>
+      <div class="shortcut-keys shortcut-keys--win">
+        <span class="sk-chip">Ctrl</span><span class="sk-sep">+</span><span class="sk-chip">⇧</span><span class="sk-sep">+</span><span class="sk-chip">A</span>
+      </div>
+      <p class="shortcut-sub shortcut-sub--win">Windows / Linux</p>
     </div>
   </div>
 </section>

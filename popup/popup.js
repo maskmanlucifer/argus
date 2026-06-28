@@ -36,8 +36,6 @@ chrome.commands.getAll(commands => {
   if (!hint) return;
   if (cmd?.shortcut) {
     hint.innerHTML = `<span class="shortcut-key">${cmd.shortcut}</span> to toggle`;
-  } else {
-    hint.innerHTML = `<a href="chrome://extensions/shortcuts" style="color:inherit;opacity:0.6;font-size:11px;">Set a shortcut</a>`;
   }
 });
 
