@@ -85,6 +85,10 @@ export class ViewportTool {
             <span class="vp-preset-px">${px}</span>
           </button>
         `).join('')}
+        <button class="vp-preset vp-preset--full">
+          <span class="vp-preset-name">Full</span>
+          <svg width="9" height="9" viewBox="0 0 11 11" fill="none"><path d="M1 4V1h3M7 1h3v3M10 7v3H7M4 10H1V7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
       </div>
       <div class="vp-input-row">
         <input class="vp-input" type="number" min="${MIN_W}" max="${maxW}" value="${w}" placeholder="width">
@@ -94,7 +98,13 @@ export class ViewportTool {
     `;
 
     p.querySelectorAll('.vp-preset').forEach(btn => {
-      btn.addEventListener('click', () => this._resize(Number(btn.dataset.px)));
+      if (btn.classList.contains('vp-preset--full')) {
+        btn.addEventListener('click', () => {
+          chrome.runtime.sendMessage({ type: 'argus-maximize-window' }).catch(() => {});
+        });
+      } else {
+        btn.addEventListener('click', () => this._resize(Number(btn.dataset.px)));
+      }
     });
 
     const input  = p.querySelector('.vp-input');

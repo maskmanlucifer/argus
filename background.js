@@ -9,12 +9,16 @@ chrome.runtime.onInstalled.addListener(({ reason }) => {
 });
 
 chrome.runtime.onMessage.addListener((msg, sender) => {
-  if (msg.type !== 'argus-resize-window') return;
+  if (msg.type !== 'argus-resize-window' && msg.type !== 'argus-maximize-window') return;
   const tabId = sender.tab?.id;
   if (!tabId) return;
   chrome.tabs.get(tabId, (tab) => {
     if (chrome.runtime.lastError || !tab?.windowId) return;
-    chrome.windows.update(tab.windowId, { width: msg.width });
+    if (msg.type === 'argus-maximize-window') {
+      chrome.windows.update(tab.windowId, { state: 'maximized' });
+    } else {
+      chrome.windows.update(tab.windowId, { width: msg.width });
+    }
   });
 });
 

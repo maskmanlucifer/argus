@@ -504,6 +504,8 @@
 .theme-dark  .vp-preset--on .vp-preset-px,
 .theme-light .vp-preset--on .vp-preset-px { opacity: 0.8; }
 
+.vp-preset--full { flex-direction: row; gap: 4px; }
+
 
 .vp-input-row {
   display: flex;
