@@ -424,7 +424,12 @@
       justify-content: center;
       gap: 0.35rem;
       grid-column: span 2;
+      flex-direction: row;
+      align-items: center;
     }
+    .shortcut-text { display: flex; flex-direction: column; gap: 0.35rem; flex: 1; }
+    .shortcut-kbd-vis { flex-shrink: 0; line-height: 0; }
+    .shortcut-kbd-vis svg { display: block; }
     .shortcut-eyebrow {
       font-size: 0.6875rem;
       font-weight: 600;
@@ -576,8 +581,10 @@
       margin-top: auto;
       padding-top: 0.75rem;
       line-height: 0;
+      border-radius: 6px;
+      overflow: hidden;
     }
-    .card-vis svg { width: 100%; height: auto; display: block; border-radius: 6px; overflow: hidden; }
+    .card-vis svg { width: 100%; height: auto; display: block; }
 
     /* ── Install / CWS ── */
     .cws-section {
@@ -835,21 +842,26 @@
       <div class="tool-row"><span class="key">T</span><span class="tool-name">Typography</span></div>
       <p class="tool-desc">Hover any element to see its font family, size, and weight — without opening DevTools.</p>
       <div class="card-vis">
-        <svg viewBox="0 0 200 82" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect width="200" height="82" fill="#f4f7fe"/>
-          <!-- text block being inspected -->
-          <rect x="10" y="10" width="88" height="62" rx="5" fill="#EEF2FF" stroke="#C7D2FE" stroke-width="1"/>
-          <text x="22" y="52" font-size="34" font-weight="700" fill="#4F46E5" font-family="Georgia,serif">Ag</text>
-          <rect x="18" y="58" width="52" height="5" rx="2" fill="#C7D2FE"/>
-          <rect x="18" y="66" width="36" height="4" rx="2" fill="#DDE6FB"/>
+        <svg viewBox="0 0 200 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="200" height="80" fill="#f4f7fe"/>
+          <!-- hovered element -->
+          <rect x="8" y="8" width="90" height="64" rx="5" fill="#EEF2FF" stroke="#C7D2FE" stroke-width="1"/>
+          <!-- fake heading line -->
+          <rect x="16" y="18" width="56" height="9" rx="2" fill="#A5B4FC"/>
+          <!-- fake body lines -->
+          <rect x="16" y="32" width="74" height="5" rx="2" fill="#C7D2FE"/>
+          <rect x="16" y="41" width="60" height="5" rx="2" fill="#DDE6FB"/>
+          <rect x="16" y="50" width="68" height="5" rx="2" fill="#DDE6FB"/>
+          <rect x="16" y="59" width="44" height="5" rx="2" fill="#E8EDFD"/>
           <!-- panel -->
-          <rect x="108" y="10" width="82" height="62" rx="5" fill="#fff" stroke="#DDE6FB" stroke-width="1"/>
-          <text x="118" y="24" font-size="7" font-weight="700" letter-spacing="0.06em" fill="#9CA3AF" font-family="system-ui,sans-serif">TYPOGRAPHY</text>
-          <line x1="118" y1="30" x2="180" y2="30" stroke="#EEF2FF" stroke-width="1"/>
-          <text x="118" y="41" font-size="7.5" fill="#9CA3AF" font-family="system-ui,sans-serif">Family</text>
-          <text x="118" y="51" font-size="8" font-weight="600" fill="#374151" font-family="system-ui,sans-serif">Inter</text>
-          <text x="118" y="61" font-size="7.5" fill="#9CA3AF" font-family="system-ui,sans-serif">Size · Weight</text>
-          <text x="118" y="71" font-size="8" font-weight="600" fill="#374151" font-family="system-ui,sans-serif">16px · 600</text>
+          <rect x="104" y="8" width="88" height="64" rx="5" fill="#fff" stroke="#DDE6FB" stroke-width="1"/>
+          <text x="113" y="21" font-size="6.5" font-weight="700" letter-spacing="0.07em" fill="#9CA3AF" font-family="system-ui,sans-serif">TYPOGRAPHY</text>
+          <line x1="113" y1="26" x2="184" y2="26" stroke="#F3F4F6" stroke-width="1"/>
+          <text x="113" y="36" font-size="7" fill="#9CA3AF" font-family="system-ui,sans-serif">Family</text>
+          <text x="113" y="46" font-size="8" font-weight="600" fill="#374151" font-family="system-ui,sans-serif">Inter</text>
+          <line x1="113" y1="51" x2="184" y2="51" stroke="#F3F4F6" stroke-width="1"/>
+          <text x="113" y="60" font-size="7" fill="#9CA3AF" font-family="system-ui,sans-serif">Size · Weight</text>
+          <text x="113" y="70" font-size="8" font-weight="600" fill="#374151" font-family="system-ui,sans-serif">16px · 600</text>
         </svg>
       </div>
     </div>
@@ -955,15 +967,72 @@
       </div>
     </div>
     <div class="tool-card tool-card--shortcut">
-      <p class="shortcut-eyebrow">Keyboard shortcut</p>
-      <div class="shortcut-keys">
-        <span class="sk-chip">⌘</span><span class="sk-sep">+</span><span class="sk-chip">⇧</span><span class="sk-sep">+</span><span class="sk-chip">A</span>
+      <div class="shortcut-text">
+        <p class="shortcut-eyebrow">Keyboard shortcut</p>
+        <div class="shortcut-keys">
+          <span class="sk-chip">⌘</span><span class="sk-sep">+</span><span class="sk-chip">⇧</span><span class="sk-sep">+</span><span class="sk-chip">A</span>
+        </div>
+        <p class="shortcut-sub">Mac · toggle the inspector on any page without opening the popup.</p>
+        <div class="shortcut-keys shortcut-keys--win">
+          <span class="sk-chip">Ctrl</span><span class="sk-sep">+</span><span class="sk-chip">⇧</span><span class="sk-sep">+</span><span class="sk-chip">A</span>
+        </div>
+        <p class="shortcut-sub shortcut-sub--win">Windows / Linux</p>
       </div>
-      <p class="shortcut-sub">Mac · toggle the inspector on any page without opening the popup.</p>
-      <div class="shortcut-keys shortcut-keys--win">
-        <span class="sk-chip">Ctrl</span><span class="sk-sep">+</span><span class="sk-chip">⇧</span><span class="sk-sep">+</span><span class="sk-chip">A</span>
+      <div class="shortcut-kbd-vis" aria-hidden="true">
+        <svg width="160" height="96" viewBox="0 0 160 96" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <!-- keyboard body -->
+          <rect x="4" y="4" width="152" height="88" rx="8" fill="#EEF2FF" stroke="#C7D2FE" stroke-width="1.5"/>
+          <!-- row 1: number row (small blocks) -->
+          <rect x="12" y="12" width="12" height="10" rx="2" fill="#fff" stroke="#DDE6FB" stroke-width="1"/>
+          <rect x="27" y="12" width="12" height="10" rx="2" fill="#fff" stroke="#DDE6FB" stroke-width="1"/>
+          <rect x="42" y="12" width="12" height="10" rx="2" fill="#fff" stroke="#DDE6FB" stroke-width="1"/>
+          <rect x="57" y="12" width="12" height="10" rx="2" fill="#fff" stroke="#DDE6FB" stroke-width="1"/>
+          <rect x="72" y="12" width="12" height="10" rx="2" fill="#fff" stroke="#DDE6FB" stroke-width="1"/>
+          <rect x="87" y="12" width="12" height="10" rx="2" fill="#fff" stroke="#DDE6FB" stroke-width="1"/>
+          <rect x="102" y="12" width="12" height="10" rx="2" fill="#fff" stroke="#DDE6FB" stroke-width="1"/>
+          <rect x="117" y="12" width="12" height="10" rx="2" fill="#fff" stroke="#DDE6FB" stroke-width="1"/>
+          <rect x="132" y="12" width="20" height="10" rx="2" fill="#fff" stroke="#DDE6FB" stroke-width="1"/>
+          <!-- row 2: QWERTY -->
+          <rect x="12" y="26" width="18" height="12" rx="2" fill="#fff" stroke="#DDE6FB" stroke-width="1"/>
+          <rect x="33" y="26" width="12" height="12" rx="2" fill="#fff" stroke="#DDE6FB" stroke-width="1"/>
+          <rect x="48" y="26" width="12" height="12" rx="2" fill="#fff" stroke="#DDE6FB" stroke-width="1"/>
+          <rect x="63" y="26" width="12" height="12" rx="2" fill="#fff" stroke="#DDE6FB" stroke-width="1"/>
+          <rect x="78" y="26" width="12" height="12" rx="2" fill="#fff" stroke="#DDE6FB" stroke-width="1"/>
+          <rect x="93" y="26" width="12" height="12" rx="2" fill="#fff" stroke="#DDE6FB" stroke-width="1"/>
+          <rect x="108" y="26" width="12" height="12" rx="2" fill="#fff" stroke="#DDE6FB" stroke-width="1"/>
+          <rect x="123" y="26" width="29" height="12" rx="2" fill="#fff" stroke="#DDE6FB" stroke-width="1"/>
+          <!-- row 3 -->
+          <rect x="12" y="42" width="22" height="12" rx="2" fill="#fff" stroke="#DDE6FB" stroke-width="1"/>
+          <!-- A key — highlighted -->
+          <rect x="37" y="42" width="12" height="12" rx="2" fill="#4F46E5" stroke="#4F46E5" stroke-width="1"/>
+          <text x="43" y="52" font-size="7" font-weight="700" fill="#fff" text-anchor="middle" font-family="system-ui,sans-serif">A</text>
+          <rect x="52" y="42" width="12" height="12" rx="2" fill="#fff" stroke="#DDE6FB" stroke-width="1"/>
+          <rect x="67" y="42" width="12" height="12" rx="2" fill="#fff" stroke="#DDE6FB" stroke-width="1"/>
+          <rect x="82" y="42" width="12" height="12" rx="2" fill="#fff" stroke="#DDE6FB" stroke-width="1"/>
+          <rect x="97" y="42" width="12" height="12" rx="2" fill="#fff" stroke="#DDE6FB" stroke-width="1"/>
+          <rect x="112" y="42" width="12" height="12" rx="2" fill="#fff" stroke="#DDE6FB" stroke-width="1"/>
+          <rect x="127" y="42" width="25" height="12" rx="2" fill="#fff" stroke="#DDE6FB" stroke-width="1"/>
+          <!-- row 4: shift row -->
+          <!-- Shift key — highlighted -->
+          <rect x="12" y="58" width="28" height="12" rx="2" fill="#818CF8" stroke="#818CF8" stroke-width="1"/>
+          <text x="26" y="68" font-size="6.5" font-weight="700" fill="#fff" text-anchor="middle" font-family="system-ui,sans-serif">⇧</text>
+          <rect x="43" y="58" width="12" height="12" rx="2" fill="#fff" stroke="#DDE6FB" stroke-width="1"/>
+          <rect x="58" y="58" width="12" height="12" rx="2" fill="#fff" stroke="#DDE6FB" stroke-width="1"/>
+          <rect x="73" y="58" width="12" height="12" rx="2" fill="#fff" stroke="#DDE6FB" stroke-width="1"/>
+          <rect x="88" y="58" width="12" height="12" rx="2" fill="#fff" stroke="#DDE6FB" stroke-width="1"/>
+          <rect x="103" y="58" width="12" height="12" rx="2" fill="#fff" stroke="#DDE6FB" stroke-width="1"/>
+          <rect x="118" y="58" width="34" height="12" rx="2" fill="#fff" stroke="#DDE6FB" stroke-width="1"/>
+          <!-- row 5: bottom row -->
+          <!-- Cmd key — highlighted -->
+          <rect x="12" y="74" width="22" height="12" rx="2" fill="#818CF8" stroke="#818CF8" stroke-width="1"/>
+          <text x="23" y="84" font-size="7.5" font-weight="600" fill="#fff" text-anchor="middle" font-family="system-ui,sans-serif">⌘</text>
+          <rect x="37" y="74" width="14" height="12" rx="2" fill="#fff" stroke="#DDE6FB" stroke-width="1"/>
+          <!-- spacebar -->
+          <rect x="54" y="74" width="60" height="12" rx="2" fill="#fff" stroke="#DDE6FB" stroke-width="1"/>
+          <rect x="117" y="74" width="14" height="12" rx="2" fill="#fff" stroke="#DDE6FB" stroke-width="1"/>
+          <rect x="134" y="74" width="18" height="12" rx="2" fill="#fff" stroke="#DDE6FB" stroke-width="1"/>
+        </svg>
       </div>
-      <p class="shortcut-sub shortcut-sub--win">Windows / Linux</p>
     </div>
   </div>
 </section>
