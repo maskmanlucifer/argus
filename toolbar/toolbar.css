@@ -965,6 +965,28 @@
 .theme-light .grid-col-btn.active,
 .theme-light .grid-col-btn:hover { background: rgba(99,102,241,0.12); color: #6366f1; }
 
+.grid-diagram { margin: 6px 0 4px; }
+.grid-diagram svg { display: block; overflow: visible; }
+.gd-col    { fill: rgba(99,102,241,0.2); }
+.gd-margin { fill: rgba(251,146,60,0.2); }
+.gd-tick      { stroke-width: 1; }
+.gd-dim-line  { stroke-width: 1; }
+.gd-label     { font-size: 7px; font-family: inherit; }
+.theme-dark  .gd-tick     { stroke: rgba(255,255,255,0.3); }
+.theme-dark  .gd-dim-line { stroke: rgba(255,255,255,0.3); }
+.theme-dark  .gd-label    { fill: rgba(255,255,255,0.4); }
+.theme-light .gd-tick     { stroke: rgba(0,0,0,0.25); }
+.theme-light .gd-dim-line { stroke: rgba(0,0,0,0.25); }
+.theme-light .gd-label    { fill: rgba(0,0,0,0.4); }
+.gd-legend { display: flex; gap: 8px; margin-top: 3px; }
+.gd-key { font-size: 9.5px; display: flex; align-items: center; gap: 3px; }
+.gd-key::before { content: ''; display: inline-block; width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+.gd-key--col::before    { background: rgba(99,102,241,0.3); }
+.gd-key--margin::before { background: rgba(251,146,60,0.3); }
+.gd-key--gutter::before { background: transparent; border: 1px dashed currentColor; opacity: 0.4; }
+.theme-dark  .gd-key { color: rgba(255,255,255,0.4); }
+.theme-light .gd-key { color: rgba(0,0,0,0.4); }
+
 .grid-inputs { display: flex; flex-direction: column; gap: 4px; }
 
 .grid-input-group {

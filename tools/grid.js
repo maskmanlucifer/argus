@@ -155,6 +155,29 @@ export class GridTool {
             `<button class="grid-col-btn${this._cols === n ? ' active' : ''}" data-cols="${n}">${n}</button>`
           ).join('')}
         </div>
+        <div class="grid-diagram">
+          <svg width="100%" height="36" viewBox="0 0 196 36" preserveAspectRatio="none" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="0"   y="6" width="18" height="24" rx="2" class="gd-margin"/>
+            <rect x="178" y="6" width="18" height="24" rx="2" class="gd-margin"/>
+            <rect x="20"  y="6" width="36" height="24" rx="2" class="gd-col"/>
+            <rect x="62"  y="6" width="36" height="24" rx="2" class="gd-col"/>
+            <rect x="104" y="6" width="36" height="24" rx="2" class="gd-col"/>
+            <rect x="146" y="6" width="30" height="24" rx="2" class="gd-col"/>
+            <line x1="56" y1="3" x2="56" y2="33" class="gd-tick"/>
+            <line x1="62" y1="3" x2="62" y2="33" class="gd-tick"/>
+            <line x1="56" y1="18" x2="62" y2="18" class="gd-dim-line"/>
+            <text x="59" y="2" class="gd-label" text-anchor="middle">G</text>
+            <line x1="0"  y1="3" x2="0"  y2="33" class="gd-tick"/>
+            <line x1="20" y1="3" x2="20" y2="33" class="gd-tick"/>
+            <line x1="0"  y1="18" x2="20" y2="18" class="gd-dim-line"/>
+            <text x="10" y="2" class="gd-label" text-anchor="middle">M</text>
+          </svg>
+          <div class="gd-legend">
+            <span class="gd-key gd-key--col">Col</span>
+            <span class="gd-key gd-key--margin">M = Margin</span>
+            <span class="gd-key gd-key--gutter">G = Gutter</span>
+          </div>
+        </div>
         <div class="grid-inputs">
           <div class="grid-input-group">
             <span class="grid-input-label">Gutter</span>
