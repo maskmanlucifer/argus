@@ -8,6 +8,16 @@ chrome.runtime.onInstalled.addListener(({ reason }) => {
   }
 });
 
+chrome.runtime.onMessage.addListener((msg, sender) => {
+  if (msg.type !== 'argus-resize-window') return;
+  const tabId = sender.tab?.id;
+  if (!tabId) return;
+  chrome.tabs.get(tabId, (tab) => {
+    if (chrome.runtime.lastError || !tab?.windowId) return;
+    chrome.windows.update(tab.windowId, { width: msg.width });
+  });
+});
+
 chrome.commands.onCommand.addListener(async (command) => {
   if (command !== 'toggle-argus') return;
   const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });

@@ -6,7 +6,9 @@
   "permissions": [
     "activeTab",
     "scripting",
-    "storage"
+    "storage",
+    "tabs",
+    "windows"
   ],
   "host_permissions": ["<all_urls>"],
   "content_scripts": [
@@ -57,7 +59,8 @@
         "tools/ruler.js",
         "tools/outline.js",
         "tools/zoom.js",
-        "tools/color.js"
+        "tools/color.js",
+        "tools/viewport.js"
       ],
       "matches": ["<all_urls>"]
     }

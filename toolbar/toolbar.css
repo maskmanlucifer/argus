@@ -414,6 +414,139 @@
 
 
 
+/* ── Viewport / Screen Size panel ── */
+.vp-size {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 3px;
+  margin: 2px 0 10px;
+  font-family: -apple-system, 'SF Pro Text', Inter, system-ui, sans-serif;
+}
+
+.vp-size-w, .vp-size-h {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+.vp-size-sep {
+  font-size: 14px;
+  opacity: 0.3;
+  font-weight: 400;
+}
+
+.vp-size-unit {
+  font-size: 11px;
+  opacity: 0.4;
+  font-weight: 500;
+  margin-left: 1px;
+  align-self: flex-end;
+  margin-bottom: 2px;
+}
+
+.vp-presets {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 5px;
+  margin-bottom: 10px;
+}
+
+.vp-preset {
+  height: 34px;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  font-family: inherit;
+  transition: background 100ms, color 100ms;
+}
+
+.vp-preset-name {
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.vp-preset-px {
+  font-size: 9.5px;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  opacity: 0.6;
+  line-height: 1;
+}
+
+.theme-dark  .vp-preset { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.55); }
+.theme-light .vp-preset { background: rgba(0,0,0,0.05);       color: rgba(0,0,0,0.5); }
+
+.theme-dark  .vp-preset:hover,
+.theme-dark  .vp-preset--on { background: rgba(33,112,244,0.18); color: #7EB8FF; }
+.theme-light .vp-preset:hover,
+.theme-light .vp-preset--on { background: rgba(33,112,244,0.12); color: #2170F4; }
+
+.theme-dark  .vp-preset--on .vp-preset-px,
+.theme-light .vp-preset--on .vp-preset-px { opacity: 0.8; }
+
+
+.vp-input-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.vp-input {
+  flex: 1;
+  height: 28px;
+  border-radius: 5px;
+  border: 1px solid rgba(127,131,140,0.25);
+  background: rgba(127,131,140,0.08);
+  color: inherit;
+  font-size: 12px;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-weight: 600;
+  padding: 0 6px;
+  outline: none;
+  min-width: 0;
+  -moz-appearance: textfield;
+}
+
+.vp-input::-webkit-outer-spin-button,
+.vp-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+
+.vp-input::selection { background: rgba(33,112,244,0.55); color: #fff; }
+
+.theme-dark  .vp-input:focus { border-color: rgba(33,112,244,0.6); background: rgba(33,112,244,0.07); }
+.theme-light .vp-input:focus { border-color: rgba(33,112,244,0.5); background: rgba(33,112,244,0.05); }
+
+.vp-input-unit {
+  font-size: 11px;
+  opacity: 0.4;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  flex-shrink: 0;
+}
+
+.vp-input-btn {
+  height: 28px;
+  padding: 0 9px;
+  border-radius: 5px;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  font-family: inherit;
+  font-weight: 600;
+  flex-shrink: 0;
+  transition: background 100ms, color 100ms;
+  background: #2170F4;
+  color: #fff;
+}
+
+.vp-input-btn:hover { background: #1a5cc5; }
+
 /* ── Breakpoint badge ── */
 #argus-bp-badge {
   position: fixed;
