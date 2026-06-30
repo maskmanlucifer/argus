@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Argus Inspector",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "description": "Visually inspect any web page: see element styles, measure spacing, and review layout without opening DevTools.",
   "permissions": [
     "activeTab",
@@ -54,13 +54,12 @@
         "tools/utils.js",
         "tools/inspect.js",
         "tools/typography.js",
-        "tools/edit.js",
         "tools/search.js",
         "tools/ruler.js",
         "tools/outline.js",
-        "tools/zoom.js",
         "tools/color.js",
-        "tools/viewport.js"
+        "tools/viewport.js",
+        "tools/grid.js"
       ],
       "matches": ["<all_urls>"]
     }
