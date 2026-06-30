@@ -1,6 +1,12 @@
-// Service worker — handles the keyboard shortcut command.
+// Service worker — handles install onboarding and the keyboard shortcut command.
 
 const RESTRICTED = /^(chrome|chrome-extension|about|data|devtools|file):/i;
+
+chrome.runtime.onInstalled.addListener(({ reason }) => {
+  if (reason === 'install') {
+    chrome.tabs.create({ url: chrome.runtime.getURL('onboarding/onboarding.html') });
+  }
+});
 
 chrome.commands.onCommand.addListener(async (command) => {
   if (command !== 'toggle-argus') return;
