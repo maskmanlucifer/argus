@@ -1,12 +1,11 @@
 import { InspectTool }   from '../tools/inspect.js';
 import { TypographyTool } from '../tools/typography.js';
-import { EditTool }       from '../tools/edit.js';
 import { SearchTool }     from '../tools/search.js';
 import { RulerTool }      from '../tools/ruler.js';
 import { OutlineTool }    from '../tools/outline.js';
-import { ZoomTool }       from '../tools/zoom.js';
 import { ColorTool }      from '../tools/color.js';
 import { ViewportTool }   from '../tools/viewport.js';
+import { GridTool }       from '../tools/grid.js';
 
 const TOOLS = [
   {
@@ -18,11 +17,6 @@ const TOOLS = [
     id: 'type', title: 'Typography',
     desc: 'Hover any element to see its font family, size, and weight.',
     icon: `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>`,
-  },
-  {
-    id: 'edit', title: 'Edit Text',
-    desc: 'Double-click any text to edit it inline. Enter to save, Esc to cancel.',
-    icon: `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>`,
   },
   {
     id: 'search', title: 'Search',
@@ -40,11 +34,6 @@ const TOOLS = [
     icon: `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><rect x="7" y="7" width="10" height="10" rx="1"/></svg>`,
   },
   {
-    id: 'zoom', title: 'Zoom',
-    desc: 'Zoom the page in or out. Use + and − to adjust in 10% steps.',
-    icon: `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/><path d="M11 8v6M8 11h6"/></svg>`,
-  },
-  {
     id: 'color', title: 'Color Picker',
     desc: 'Pick any color from the page. Shows HEX, RGB, and HSL values with one-click copy.',
     icon: `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m2 22 1-1h3l9-9"/><path d="M3 21v-3l9-9"/><path d="m15 6 3.4-3.4a2.1 2.1 0 1 1 3 3L18 9l.4.4a2.1 2.1 0 1 1-3 3l-3.8-3.8"/></svg>`,
@@ -53,6 +42,11 @@ const TOOLS = [
     id: 'viewport', title: 'Screen Size',
     desc: 'Resize the browser window to a common breakpoint or type any width for pixel-perfect sizing.',
     icon: `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/><path d="M8 10h8M8 10l2-2M8 10l2 2M16 10l-2-2M16 10l-2 2"/></svg>`,
+  },
+  {
+    id: 'grid', title: 'Grid',
+    desc: 'Overlay a column grid and baseline grid on the page. Configure columns, gutter, margin, and baseline unit.',
+    icon: `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/></svg>`,
   },
 ];
 
@@ -101,7 +95,7 @@ export class Toolbar {
 
   async _loadState() {
     const data = await chrome.storage.local.get(['argus_theme', 'argus_placement']);
-    this.theme     = data.argus_theme     || 'dark';
+    this.theme     = data.argus_theme     || 'light';
     this.placement = data.argus_placement || 'right';
   }
 
@@ -195,13 +189,12 @@ export class Toolbar {
     this.tools = {
       inspect:  new InspectTool(this),
       type:     new TypographyTool(this),
-      edit:     new EditTool(this),
       search:   new SearchTool(this),
       ruler:    new RulerTool(this),
       outline:  new OutlineTool(this),
-      zoom:     new ZoomTool(this),
       color:    new ColorTool(this),
       viewport: new ViewportTool(this),
+      grid:     new GridTool(this),
     };
 
     // Esc deactivates the active tool

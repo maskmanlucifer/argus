@@ -1,16 +1,24 @@
 import { isArgus } from './utils.js';
 
+function _shorthand(t, r, b, l) {
+  if (t === '0px' && r === '0px' && b === '0px' && l === '0px') return '—';
+  if (t === r && r === b && b === l) return t;
+  if (t === b && r === l) return `${t} ${r}`;
+  return `${t} ${r} ${b} ${l}`;
+}
+
 export class InspectTool {
   constructor(toolbar) {
-    this.tb             = toolbar;
-    this.hoverHighlight = null; // blue — follows mouse always
-    this.pinnedHighlight = null; // green — stays on clicked element
-    this.pinnedEl       = null;
-    this.panel          = null;
-    this._active        = false;
-    this._currentHover  = null;
-    this._onMove        = this._onMouseMove.bind(this);
-    this._onClick       = this._onMouseClick.bind(this);
+    this.tb              = toolbar;
+    this.hoverHighlight  = null;
+    this.pinnedHighlight = null;
+    this.pinnedEl        = null;
+    this.panel           = null;
+    this._pill           = null;
+    this._active         = false;
+    this._currentHover   = null;
+    this._onMove         = this._onMouseMove.bind(this);
+    this._onClick        = this._onMouseClick.bind(this);
   }
 
   activate() {
@@ -18,9 +26,10 @@ export class InspectTool {
     this._active = true;
     this._createHighlights();
     this._onScroll = () => {
-      if (this.pinnedEl)        this._placeEl(this.pinnedHighlight, this.pinnedEl);
-      if (this._currentHover)   this._placeEl(this.hoverHighlight,  this._currentHover);
+      if (this.pinnedEl)       this._placeEl(this.pinnedHighlight, this.pinnedEl);
+      if (this._currentHover)  this._placeEl(this.hoverHighlight,  this._currentHover);
       if (this.pinnedEl && this.panel) this._positionPanel(this.pinnedEl);
+      if (this._currentHover) this._placePill(this._currentHover);
     };
     document.addEventListener('mousemove', this._onMove,   true);
     document.addEventListener('click',     this._onClick,  true);
@@ -55,6 +64,15 @@ export class InspectTool {
     this.hoverHighlight  = this._makeHighlight('argus-highlight');
     this.pinnedHighlight = this._makeHighlight('argus-highlight pinned');
     this.pinnedHighlight.style.display = 'none';
+
+    this._pill = document.createElement('button');
+    this._pill.className = 'argus-inspect-pill';
+    this._pill.style.display = 'none';
+    this._pill.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (this._currentHover) this._pinTarget(this._currentHover);
+    });
+    this.tb.shadow.appendChild(this._pill);
   }
 
   _makeHighlight(className) {
@@ -67,7 +85,8 @@ export class InspectTool {
   _removeHighlights() {
     this.hoverHighlight?.remove();
     this.pinnedHighlight?.remove();
-    this.hoverHighlight = this.pinnedHighlight = null;
+    this._pill?.remove();
+    this.hoverHighlight = this.pinnedHighlight = this._pill = null;
   }
 
   _placeEl(el, target) {
@@ -87,42 +106,65 @@ export class InspectTool {
     if (!this._active) return;
     const target = this._realTarget(e.target);
     if (!target) return;
-
-    // Blue hover highlight always follows the cursor
     this._placeEl(this.hoverHighlight, target);
     this._currentHover = target;
+    this._showPill(target);
   }
 
   _onMouseClick(e) {
     if (!this._active || isArgus(e.target, this.tb.shadow)) return;
     e.preventDefault();
     e.stopPropagation();
-
     const target = this._realTarget(e.target);
     if (!target) return;
+    this._pinTarget(target);
+  }
 
+  /** Pin an element: show green highlight + properties panel. Toggle off if same element. */
+  _pinTarget(target) {
     if (this.pinnedEl === target) {
-      // Click same element again — close panel
       this.pinnedEl = null;
       this.pinnedHighlight.style.display = 'none';
       this._removePanel();
+      this._showPill(this._currentHover);
       return;
     }
-
-    // Switch to this element (works whether or not a panel was already open)
     this.pinnedEl = target;
     this._placeEl(this.pinnedHighlight, target);
     this.pinnedHighlight.style.display = 'block';
     this._showPanel(target);
   }
 
+  // ── Inspect pill ──
+  _showPill(target) {
+    if (!this._pill || !target) return;
+    this._pill.textContent = `<${target.tagName.toLowerCase()}>`;
+    this._placePill(target);
+    this._pill.style.display = 'flex';
+  }
+
+  _hidePill() {
+    if (this._pill) this._pill.style.display = 'none';
+  }
+
+  _placePill(target) {
+    if (!this._pill || !target) return;
+    const r  = target.getBoundingClientRect();
+    const ph = 20;
+    let top  = r.top - ph / 2;
+    let left = r.left + 4;
+    top  = Math.max(4, Math.min(top,  window.innerHeight - ph - 4));
+    left = Math.max(4, Math.min(left, window.innerWidth  - 80 - 4));
+    Object.assign(this._pill.style, { top: `${top}px`, left: `${left}px` });
+  }
+
   // ── Panel ──
   _showPanel(el) {
     this._removePanel();
 
-    const cs = window.getComputedStyle(el);
+    const cs  = window.getComputedStyle(el);
     const tag = el.tagName.toLowerCase();
-    const cls = [...el.classList].slice(0, 3).join(' ') || '—';
+    const cls = [...el.classList].join(' ') || '—';
 
     const textColor  = cs.color;
     const bgColor    = cs.backgroundColor;
@@ -130,28 +172,37 @@ export class InspectTool {
     const fontWeight = cs.fontWeight;
     const fontFamily = cs.fontFamily.split(',')[0].replace(/['"]/g, '').trim();
 
-    const rows = [
-      { k: 'Tag',    v: `&lt;${tag}&gt;` },
-      { k: 'Class',  v: cls || '—' },
-      { k: 'Font',   v: fontFamily },
-      { k: 'Size',   v: fontSize },
-      { k: 'Weight', v: fontWeight },
-      { k: 'Color',  v: textColor,  swatch: textColor },
-      { k: 'BG',     v: bgColor,    swatch: bgColor },
-    ];
+    const pad = _shorthand(cs.paddingTop, cs.paddingRight, cs.paddingBottom, cs.paddingLeft);
+    const mar = _shorthand(cs.marginTop,  cs.marginRight,  cs.marginBottom,  cs.marginLeft);
+
+    const row  = (k, v, swatch) => `
+      <div class="panel-row">
+        <span class="panel-key">${k}</span>
+        <span class="panel-val" style="display:flex;align-items:center;gap:5px;">
+          ${swatch ? `<span class="swatch" style="background:${swatch};"></span>` : ''}${v}
+        </span>
+      </div>`;
 
     const p = document.createElement('div');
     p.className = `argus-panel theme-${this.tb.theme}`;
     p.innerHTML = `
       <div class="panel-label">Inspect</div>
-      ${rows.map(r => `
-        <div class="panel-row">
-          <span class="panel-key">${r.k}</span>
-          <span class="panel-val" style="display:flex;align-items:center;gap:5px;">
-            ${r.swatch ? `<span class="swatch" style="background:${r.swatch};"></span>` : ''}
-            ${r.v}
-          </span>
-        </div>`).join('')}
+      <div class="panel-row">
+        <span class="panel-key">Tag</span>
+        <span class="panel-val">&lt;${tag}&gt;</span>
+      </div>
+      <div class="panel-row panel-row--block">
+        <span class="panel-key">Class</span>
+        <span class="panel-val panel-val--wrap">${cls}</span>
+      </div>
+      ${row('Font',   fontFamily)}
+      ${row('Size',   fontSize)}
+      ${row('Weight', fontWeight)}
+      ${row('Color',  textColor,  textColor)}
+      ${row('BG',     bgColor,    bgColor)}
+      <div class="inspect-section-label">Spacing</div>
+      ${row('Padding', pad)}
+      ${row('Margin',  mar)}
       <button class="panel-copy-btn">Copy CSS</button>
     `;
 

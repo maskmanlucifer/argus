@@ -47,6 +47,8 @@ export class TypographyTool {
     const family = cs.fontFamily.split(',')[0].replace(/['"]/g, '').trim();
     const size   = cs.fontSize;
     const weight = cs.fontWeight;
+    const color      = cs.color;
+    const lineHeight = cs.lineHeight;
 
     if (!this.panel) {
       this.panel = document.createElement('div');
@@ -59,13 +61,15 @@ export class TypographyTool {
       <div class="panel-row"><span class="panel-key">Family</span><span class="panel-val">${family}</span></div>
       <div class="panel-row"><span class="panel-key">Size</span><span class="panel-val">${size}</span></div>
       <div class="panel-row"><span class="panel-key">Weight</span><span class="panel-val">${weight}</span></div>
+      <div class="panel-row"><span class="panel-key">Color</span><span class="panel-val" style="display:flex;align-items:center;gap:5px;"><span class="swatch" style="background:${color};"></span>${color}</span></div>
+      <div class="panel-row"><span class="panel-key">Line Height</span><span class="panel-val">${lineHeight}</span></div>
     `;
 
     // Position near cursor
     const gap = 14;
     let top  = e.clientY + gap;
     let left = e.clientX + gap;
-    if (top  + 120 > window.innerHeight) top  = e.clientY - 120 - gap;
+    if (top  + 160 > window.innerHeight) top  = e.clientY - 160 - gap;
     if (left + 260 > window.innerWidth)  left = e.clientX - 260 - gap;
     Object.assign(this.panel.style, { top: `${top}px`, left: `${left}px` });
   }

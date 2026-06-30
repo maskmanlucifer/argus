@@ -6,6 +6,8 @@
 
   function mount() {
     if (mounting || document.getElementById('argus-host')) return;
+    // Extension context invalidated (e.g. extension reloaded while tab stayed open)
+    if (!chrome?.runtime?.getURL) return;
     mounting = true;
 
     const host = document.createElement('div');
@@ -28,6 +30,7 @@
 
     link.onerror = cleanup;
     link.onload = () => {
+      if (!chrome?.runtime?.getURL) { cleanup(); return; }
       import(chrome.runtime.getURL('toolbar/toolbar.js')).then(({ Toolbar }) => {
         mounting = false;
         const tb = new Toolbar({ shadow, container, host });
