@@ -571,6 +571,14 @@
       border-color: rgba(37,99,235,0.35);
     }
 
+    /* ── Shared card visual ── */
+    .card-vis {
+      margin-top: auto;
+      padding-top: 0.75rem;
+      line-height: 0;
+    }
+    .card-vis svg { width: 100%; height: auto; display: block; border-radius: 6px; overflow: hidden; }
+
     /* ── Install / CWS ── */
     .cws-section {
       background: var(--surface);
@@ -826,22 +834,125 @@
     <div class="tool-card">
       <div class="tool-row"><span class="key">T</span><span class="tool-name">Typography</span></div>
       <p class="tool-desc">Hover any element to see its font family, size, and weight — without opening DevTools.</p>
+      <div class="card-vis">
+        <svg viewBox="0 0 200 82" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="200" height="82" fill="#f4f7fe"/>
+          <!-- text block being inspected -->
+          <rect x="10" y="10" width="88" height="62" rx="5" fill="#EEF2FF" stroke="#C7D2FE" stroke-width="1"/>
+          <text x="22" y="52" font-size="34" font-weight="700" fill="#4F46E5" font-family="Georgia,serif">Ag</text>
+          <rect x="18" y="58" width="52" height="5" rx="2" fill="#C7D2FE"/>
+          <rect x="18" y="66" width="36" height="4" rx="2" fill="#DDE6FB"/>
+          <!-- panel -->
+          <rect x="108" y="10" width="82" height="62" rx="5" fill="#fff" stroke="#DDE6FB" stroke-width="1"/>
+          <text x="118" y="24" font-size="7" font-weight="700" letter-spacing="0.06em" fill="#9CA3AF" font-family="system-ui,sans-serif">TYPOGRAPHY</text>
+          <line x1="118" y1="30" x2="180" y2="30" stroke="#EEF2FF" stroke-width="1"/>
+          <text x="118" y="41" font-size="7.5" fill="#9CA3AF" font-family="system-ui,sans-serif">Family</text>
+          <text x="118" y="51" font-size="8" font-weight="600" fill="#374151" font-family="system-ui,sans-serif">Inter</text>
+          <text x="118" y="61" font-size="7.5" fill="#9CA3AF" font-family="system-ui,sans-serif">Size · Weight</text>
+          <text x="118" y="71" font-size="8" font-weight="600" fill="#374151" font-family="system-ui,sans-serif">16px · 600</text>
+        </svg>
+      </div>
     </div>
     <div class="tool-card">
       <div class="tool-row"><span class="key">/</span><span class="tool-name">Search</span></div>
       <p class="tool-desc">Find elements by CSS selector or text content. Cycle through matches with Enter and Shift+Enter.</p>
+      <div class="card-vis">
+        <svg viewBox="0 0 200 82" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="200" height="82" fill="#f4f7fe"/>
+          <!-- search bar -->
+          <rect x="10" y="10" width="180" height="22" rx="5" fill="#fff" stroke="#DDE6FB" stroke-width="1"/>
+          <text x="20" y="25" font-size="11" font-weight="700" fill="#C7D2FE" font-family="monospace">/</text>
+          <text x="32" y="25" font-size="8.5" fill="#374151" font-family="system-ui,sans-serif">nav a.active</text>
+          <rect x="165" y="14" width="18" height="14" rx="3" fill="#EEF2FF"/>
+          <text x="174" y="24" font-size="7.5" fill="#6366F1" text-anchor="middle" font-family="system-ui,sans-serif">2/5</text>
+          <!-- result items -->
+          <rect x="10" y="40" width="180" height="14" rx="3" fill="#fff" stroke="#DDE6FB" stroke-width="1"/>
+          <rect x="10" y="40" width="180" height="14" rx="3" fill="rgba(99,102,241,0.08)"/>
+          <rect x="16" y="45" width="40" height="4" rx="1" fill="#A5B4FC"/>
+          <rect x="60" y="45" width="60" height="4" rx="1" fill="#DDE6FB"/>
+          <rect x="10" y="60" width="180" height="14" rx="3" fill="#fff" stroke="#DDE6FB" stroke-width="1"/>
+          <rect x="16" y="65" width="30" height="4" rx="1" fill="#DDE6FB"/>
+          <rect x="50" y="65" width="50" height="4" rx="1" fill="#DDE6FB"/>
+        </svg>
+      </div>
     </div>
     <div class="tool-card">
       <div class="tool-row"><span class="key">R</span><span class="tool-name">Rulers</span></div>
       <p class="tool-desc">Drop full-screen guide lines. Select one, hover another — the gap between them shows automatically.</p>
+      <div class="card-vis">
+        <svg viewBox="0 0 200 82" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="200" height="82" fill="#f4f7fe"/>
+          <!-- content blocks -->
+          <rect x="18" y="14" width="72" height="8" rx="2" fill="#DDE6FB"/>
+          <rect x="18" y="26" width="120" height="5" rx="2" fill="#EEF2FF"/>
+          <rect x="18" y="34" width="96" height="5" rx="2" fill="#EEF2FF"/>
+          <!-- ruler line 1 -->
+          <line x1="0" y1="44" x2="200" y2="44" stroke="#6366F1" stroke-width="1.5" stroke-dasharray="5 3"/>
+          <circle cx="6" cy="44" r="3" fill="#6366F1"/>
+          <!-- ruler line 2 -->
+          <line x1="0" y1="68" x2="200" y2="68" stroke="#6366F1" stroke-width="1.5" stroke-dasharray="5 3"/>
+          <circle cx="6" cy="68" r="3" fill="#6366F1"/>
+          <!-- connector + badge -->
+          <line x1="100" y1="44" x2="100" y2="56" stroke="#6366F1" stroke-width="1" stroke-dasharray="2 2"/>
+          <line x1="100" y1="68" x2="100" y2="58" stroke="#6366F1" stroke-width="1" stroke-dasharray="2 2"/>
+          <rect x="80" y="52" width="40" height="14" rx="4" fill="#6366F1"/>
+          <text x="100" y="62.5" font-size="8" font-weight="600" fill="#fff" text-anchor="middle" font-family="system-ui,sans-serif">24px</text>
+        </svg>
+      </div>
     </div>
     <div class="tool-card">
       <div class="tool-row"><span class="key">O</span><span class="tool-name">Outlines</span></div>
       <p class="tool-desc">Toggle a 1px outline on every element to see the page's box structure at a glance.</p>
+      <div class="card-vis">
+        <svg viewBox="0 0 200 82" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="200" height="82" fill="#f9fafb"/>
+          <!-- outer page -->
+          <rect x="8" y="6" width="184" height="70" rx="4" fill="none" stroke="#F472B6" stroke-width="1"/>
+          <!-- nav bar -->
+          <rect x="14" y="12" width="172" height="14" rx="2" fill="none" stroke="#818CF8" stroke-width="1"/>
+          <rect x="20" y="16" width="28" height="5" rx="1" fill="none" stroke="#818CF8" stroke-width="0.75"/>
+          <rect x="56" y="16" width="20" height="5" rx="1" fill="none" stroke="#818CF8" stroke-width="0.75"/>
+          <rect x="84" y="16" width="20" height="5" rx="1" fill="none" stroke="#818CF8" stroke-width="0.75"/>
+          <!-- two columns -->
+          <rect x="14" y="32" width="80" height="38" rx="2" fill="none" stroke="#34D399" stroke-width="1"/>
+          <rect x="104" y="32" width="82" height="38" rx="2" fill="none" stroke="#60A5FA" stroke-width="1"/>
+          <!-- inner content -->
+          <rect x="20" y="38" width="48" height="6" rx="1" fill="none" stroke="#34D399" stroke-width="0.75"/>
+          <rect x="20" y="48" width="64" height="4" rx="1" fill="none" stroke="#34D399" stroke-width="0.75" stroke-dasharray="2 1.5"/>
+          <rect x="20" y="55" width="56" height="4" rx="1" fill="none" stroke="#34D399" stroke-width="0.75" stroke-dasharray="2 1.5"/>
+          <rect x="110" y="38" width="32" height="20" rx="2" fill="none" stroke="#60A5FA" stroke-width="0.75"/>
+          <rect x="148" y="38" width="30" height="8" rx="1" fill="none" stroke="#60A5FA" stroke-width="0.75"/>
+          <rect x="148" y="50" width="22" height="8" rx="1" fill="none" stroke="#60A5FA" stroke-width="0.75" stroke-dasharray="2 1.5"/>
+        </svg>
+      </div>
     </div>
     <div class="tool-card">
       <div class="tool-row"><span class="key">G</span><span class="tool-name">Grid</span></div>
       <p class="tool-desc">Overlay a column grid or baseline grid on any page. Set columns, gutter, margin, and max-width — save configs for reuse.</p>
+      <div class="card-vis">
+        <svg viewBox="0 0 200 82" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="200" height="82" fill="#f9fafb"/>
+          <!-- margin zones -->
+          <rect x="0" y="0" width="16" height="82" fill="rgba(251,146,60,0.08)"/>
+          <rect x="184" y="0" width="16" height="82" fill="rgba(251,146,60,0.08)"/>
+          <!-- columns (4 cols) -->
+          <rect x="16"  y="0" width="38" height="82" fill="rgba(99,102,241,0.1)"/>
+          <rect x="62"  y="0" width="38" height="82" fill="rgba(99,102,241,0.1)"/>
+          <rect x="108" y="0" width="38" height="82" fill="rgba(99,102,241,0.1)"/>
+          <rect x="154" y="0" width="30" height="82" fill="rgba(99,102,241,0.1)"/>
+          <!-- margin lines -->
+          <line x1="16"  y1="0" x2="16"  y2="82" stroke="#FB923C" stroke-width="0.75" stroke-dasharray="3 2"/>
+          <line x1="184" y1="0" x2="184" y2="82" stroke="#FB923C" stroke-width="0.75" stroke-dasharray="3 2"/>
+          <!-- content blocks -->
+          <rect x="16"  y="10" width="84" height="14" rx="2" fill="white" opacity="0.7"/>
+          <rect x="108" y="10" width="76" height="14" rx="2" fill="white" opacity="0.7"/>
+          <rect x="16"  y="32" width="168" height="8"  rx="2" fill="white" opacity="0.6"/>
+          <rect x="16"  y="44" width="140" height="8"  rx="2" fill="white" opacity="0.6"/>
+          <rect x="16"  y="60" width="52"  height="14" rx="2" fill="white" opacity="0.7"/>
+          <rect x="78"  y="60" width="52"  height="14" rx="2" fill="white" opacity="0.7"/>
+          <rect x="140" y="60" width="44"  height="14" rx="2" fill="white" opacity="0.7"/>
+        </svg>
+      </div>
     </div>
     <div class="tool-card tool-card--shortcut">
       <p class="shortcut-eyebrow">Keyboard shortcut</p>
