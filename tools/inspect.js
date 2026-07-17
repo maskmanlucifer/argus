@@ -1,5 +1,7 @@
 import { isArgus } from './utils.js';
 
+const PANEL_REST_DELAY = 220; // ms the cursor must rest on an element before its panel appears
+
 function _shorthand(t, r, b, l) {
   if (t === '0px' && r === '0px' && b === '0px' && l === '0px') return '—';
   if (t === r && r === b && b === l) return t;
@@ -11,82 +13,64 @@ export class InspectTool {
   constructor(toolbar) {
     this.tb              = toolbar;
     this.hoverHighlight  = null;
-    this.pinnedHighlight = null;
-    this.pinnedEl        = null;
     this.panel           = null;
-    this._pill           = null;
     this._active         = false;
     this._currentHover   = null;
+    this._pendingHover   = null;
+    this._panelTimer     = null;
     this._onMove         = this._onMouseMove.bind(this);
-    this._onClick        = this._onMouseClick.bind(this);
+    this._onClick        = this._onClick.bind(this);
   }
 
   activate() {
     if (this._active) return; // guard against double-activate orphaning prior highlights
     this._active = true;
-    this._createHighlights();
+    this._createHighlight();
     this._onScroll = () => {
-      if (this.pinnedEl)       this._placeEl(this.pinnedHighlight, this.pinnedEl);
-      if (this._currentHover)  this._placeEl(this.hoverHighlight,  this._currentHover);
-      if (this.pinnedEl && this.panel) this._positionPanel(this.pinnedEl);
-      if (this._currentHover) this._placePill(this._currentHover);
+      if (this._currentHover) {
+        this._placeEl(this.hoverHighlight, this._currentHover);
+        if (this.panel) this._positionPanel(this._currentHover);
+      }
     };
-    document.addEventListener('mousemove', this._onMove,   true);
-    document.addEventListener('click',     this._onClick,  true);
+    document.addEventListener('mousemove', this._onMove, true);
+    document.addEventListener('click', this._onClick, true);
     window.addEventListener('scroll', this._onScroll, { passive: true, capture: true });
     window.addEventListener('resize', this._onScroll);
   }
 
   deactivate() {
     this._active = false;
-    document.removeEventListener('mousemove', this._onMove,  true);
-    document.removeEventListener('click',     this._onClick, true);
+    document.removeEventListener('mousemove', this._onMove, true);
+    document.removeEventListener('click', this._onClick, true);
     window.removeEventListener('scroll', this._onScroll, { capture: true });
     window.removeEventListener('resize', this._onScroll);
-    this._removeHighlights();
+    clearTimeout(this._panelTimer);
+    this._pendingHover = null;
+    this._removeHighlight();
     this._removePanel();
-    this.pinnedEl     = null;
     this._currentHover = null;
+  }
+
+  // Inspect is look-don't-touch: swallow clicks on real page content so an
+  // accidental click while inspecting doesn't navigate away or submit a form.
+  _onClick(e) {
+    if (!this._active || isArgus(e.target, this.tb.shadow)) return;
+    e.preventDefault();
+    e.stopPropagation();
   }
 
   destroy() { this.deactivate(); }
 
-  onEsc() {
-    if (this.pinnedEl) {
-      this.pinnedEl = null;
-      if (this.pinnedHighlight) this.pinnedHighlight.style.display = 'none';
-      this._removePanel();
-    }
+  // ── Highlight ──
+  _createHighlight() {
+    this.hoverHighlight = document.createElement('div');
+    this.hoverHighlight.className = 'argus-highlight';
+    this.tb.shadow.appendChild(this.hoverHighlight);
   }
 
-  // ── Highlights ──
-  _createHighlights() {
-    this.hoverHighlight  = this._makeHighlight('argus-highlight');
-    this.pinnedHighlight = this._makeHighlight('argus-highlight pinned');
-    this.pinnedHighlight.style.display = 'none';
-
-    this._pill = document.createElement('button');
-    this._pill.className = 'argus-inspect-pill';
-    this._pill.style.display = 'none';
-    this._pill.addEventListener('click', (e) => {
-      e.stopPropagation();
-      if (this._currentHover) this._pinTarget(this._currentHover);
-    });
-    this.tb.shadow.appendChild(this._pill);
-  }
-
-  _makeHighlight(className) {
-    const el = document.createElement('div');
-    el.className = className;
-    this.tb.shadow.appendChild(el);
-    return el;
-  }
-
-  _removeHighlights() {
+  _removeHighlight() {
     this.hoverHighlight?.remove();
-    this.pinnedHighlight?.remove();
-    this._pill?.remove();
-    this.hoverHighlight = this.pinnedHighlight = this._pill = null;
+    this.hoverHighlight = null;
   }
 
   _placeEl(el, target) {
@@ -101,67 +85,45 @@ export class InspectTool {
     });
   }
 
-  // ── Mouse handlers ──
+  // ── Mouse handler ──
   _onMouseMove(e) {
     if (!this._active) return;
     const target = this._realTarget(e.target);
-    if (!target) return;
+    if (!target) return; // hovering our own UI (e.g. the panel) — leave everything as-is, so Copy CSS stays clickable
+
+    // The panel sits in the small gap just outside the highlighted element.
+    // Crossing that gap still passes over real page content underneath, which
+    // would otherwise switch the target mid-transit and yank the panel away
+    // right as the cursor is heading for it. Treat the cursor as still "on"
+    // the current element while it's anywhere inside the box spanning the
+    // element and the panel together.
+    if (this.panel && this._currentHover && target !== this._currentHover && this._isInBridge(e)) return;
+
     this._placeEl(this.hoverHighlight, target);
     this._currentHover = target;
-    this._showPill(target);
+
+    // Only refresh the panel once the cursor rests on an element — otherwise
+    // quick passes through intervening elements (e.g. a card's ancestors on
+    // the way out to the body) repeatedly flash the panel to whatever's
+    // fleetingly under the cursor.
+    if (target === this._pendingHover) return;
+    this._pendingHover = target;
+    clearTimeout(this._panelTimer);
+    this._panelTimer = setTimeout(() => {
+      if (this._currentHover === target) this._showPanel(target);
+    }, PANEL_REST_DELAY);
   }
 
-  _onMouseClick(e) {
-    if (!this._active || isArgus(e.target, this.tb.shadow)) return;
-    e.preventDefault();
-    e.stopPropagation();
-    const target = this._realTarget(e.target);
-    if (!target) return;
-    this._pinTarget(target);
+  _isInBridge(e) {
+    const m  = 12;
+    const pr = this.panel.getBoundingClientRect();
+    return e.clientX >= pr.left - m && e.clientX <= pr.right  + m &&
+           e.clientY >= pr.top  - m && e.clientY <= pr.bottom + m;
   }
 
-  /** Pin an element: show green highlight + properties panel. Toggle off if same element. */
-  _pinTarget(target) {
-    if (this.pinnedEl === target) {
-      this.pinnedEl = null;
-      this.pinnedHighlight.style.display = 'none';
-      this._removePanel();
-      this._showPill(this._currentHover);
-      return;
-    }
-    this.pinnedEl = target;
-    this._placeEl(this.pinnedHighlight, target);
-    this.pinnedHighlight.style.display = 'block';
-    this._showPanel(target);
-  }
-
-  // ── Inspect pill ──
-  _showPill(target) {
-    if (!this._pill || !target) return;
-    this._pill.textContent = `<${target.tagName.toLowerCase()}>`;
-    this._placePill(target);
-    this._pill.style.display = 'flex';
-  }
-
-  _hidePill() {
-    if (this._pill) this._pill.style.display = 'none';
-  }
-
-  _placePill(target) {
-    if (!this._pill || !target) return;
-    const r  = target.getBoundingClientRect();
-    const ph = 20;
-    let top  = r.top - ph / 2;
-    let left = r.left + 4;
-    top  = Math.max(4, Math.min(top,  window.innerHeight - ph - 4));
-    left = Math.max(4, Math.min(left, window.innerWidth  - 80 - 4));
-    Object.assign(this._pill.style, { top: `${top}px`, left: `${left}px` });
-  }
-
-  // ── Panel ──
+  // ── Panel — reuses one persistent node so the entrance animation doesn't
+  // replay (and the panel doesn't flicker/jump) on every hover update ──
   _showPanel(el) {
-    this._removePanel();
-
     const cs  = window.getComputedStyle(el);
     const tag = el.tagName.toLowerCase();
     const cls = [...el.classList].join(' ') || '—';
@@ -183,9 +145,12 @@ export class InspectTool {
         </span>
       </div>`;
 
-    const p = document.createElement('div');
-    p.className = `argus-panel theme-${this.tb.theme}`;
-    p.innerHTML = `
+    if (!this.panel) {
+      this.panel = document.createElement('div');
+      this.tb.shadow.appendChild(this.panel);
+    }
+    this.panel.className = `argus-panel inspect-panel theme-${this.tb.theme}`;
+    this.panel.innerHTML = `
       <div class="panel-label">Inspect</div>
       <div class="panel-row">
         <span class="panel-key">Tag</span>
@@ -206,9 +171,7 @@ export class InspectTool {
       <button class="panel-copy-btn">Copy CSS</button>
     `;
 
-    p.querySelector('.panel-copy-btn').addEventListener('click', () => this._copyCss(el, p));
-    this.tb.shadow.appendChild(p);
-    this.panel = p;
+    this.panel.querySelector('.panel-copy-btn').addEventListener('click', () => this._copyCss(el, this.panel));
     this._positionPanel(el);
   }
 
@@ -294,11 +257,10 @@ export class InspectTool {
   }
 
   setTheme(theme) {
-    this.panel?.setAttribute('class', `argus-panel theme-${theme}`);
+    this.panel?.setAttribute('class', `argus-panel inspect-panel theme-${theme}`);
   }
 
   setPlacement() {
-    const target = this.pinnedEl || this._currentHover;
-    if (target) this._positionPanel(target);
+    if (this._currentHover) this._positionPanel(this._currentHover);
   }
 }

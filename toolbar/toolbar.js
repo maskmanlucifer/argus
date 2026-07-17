@@ -10,7 +10,7 @@ import { GridTool }       from '../tools/grid.js';
 const TOOLS = [
   {
     id: 'inspect', title: 'Inspect',
-    desc: 'Hover to highlight an element, click to pin it. Shows tag, class, font, and colors.',
+    desc: 'Hover any element to see its tag, class, font, and colors.',
     icon: `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><circle cx="12" cy="12" r="3"/><path d="m16 16-1.9-1.9"/></svg>`,
   },
   {
@@ -96,7 +96,7 @@ export class Toolbar {
   async _loadState() {
     const data = await chrome.storage.local.get(['argus_theme', 'argus_placement']);
     this.theme     = data.argus_theme     || 'light';
-    this.placement = data.argus_placement || 'right';
+    this.placement = data.argus_placement || 'top';
   }
 
   _saveState() {
@@ -210,6 +210,25 @@ export class Toolbar {
 
     this._positionRail();
     if (!this._visible) this.rail.classList.add('hidden');
+
+    // Subtle one-shot entrance animation so a freshly-loaded toolbar gets noticed
+    this.rail.classList.add('argus-intro');
+    this.rail.addEventListener('animationend', () => this.rail.classList.remove('argus-intro'), { once: true });
+
+    this._startCometLoop();
+  }
+
+  // Drives the --argus-comet-angle custom property directly via rAF instead of
+  // a CSS animation — see the comment on #argus-rail in toolbar.css for why.
+  _startCometLoop() {
+    const PERIOD_MS = 2800;
+    const tick = (now) => {
+      if (this._cometStart == null) this._cometStart = now;
+      const angle = ((now - this._cometStart) % PERIOD_MS) / PERIOD_MS * 360;
+      this.rail.style.setProperty('--argus-comet-angle', `${angle}deg`);
+      this._cometRaf = requestAnimationFrame(tick);
+    };
+    this._cometRaf = requestAnimationFrame(tick);
   }
 
   _positionRail() {
@@ -252,7 +271,7 @@ export class Toolbar {
   // ── Guide popover ──
   _onHover(id, btn) {
     clearTimeout(this._guideTimer);
-    this._guideTimer = setTimeout(() => this._showGuide(id, btn), 350);
+    this._guideTimer = setTimeout(() => this._showGuide(id, btn), 40);
   }
 
   _onLeave() {
@@ -378,6 +397,7 @@ export class Toolbar {
   _destroy() {
     this._hideGuide();
     this.guide = null; // sentinel: any stale RAF that slips through will bail at the null-check
+    if (this._cometRaf) cancelAnimationFrame(this._cometRaf);
     this._deactivate(false);
     Object.values(this.tools).forEach(t => t.destroy?.());
     this._pageNodes?.forEach(n => n.remove());
