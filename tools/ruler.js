@@ -1,7 +1,16 @@
 import { isArgus } from './utils.js';
 
 const LINE_COLOR  = '#F26432'; // orange dotted — visible against most page backgrounds
+const SNAP_COLOR  = '#0ABE51'; // green — line lands exactly on a matching element edge
 const DEFAULT_GAP  = 120;
+const VIS_OFFSET   = 4; // line-vis sits this many px inside its element (see toolbar.css) — clamp against it so a line can still reach the true viewport edge
+
+// Edge-highlight palette — cycled per matched element so overlapping/adjacent
+// edges along the same ruler line stay visually distinguishable.
+const EDGE_PALETTE = ['#F26432', '#2170F4', '#0ABE51', '#FFC53D', '#A855F7', '#F43F5E', '#14B8A6', '#EAB308'];
+const EDGE_ROW_GAP  = 4;  // px between stacked rows when two matches' ranges overlap
+const EDGE_MAX_SEGS = 48; // hard cap on matches scanned per update — keeps a pathological page from stalling drag
+const EDGE_MAX_ROWS = 8;
 
 export class RulerTool {
   constructor(toolbar) {
@@ -14,8 +23,8 @@ export class RulerTool {
     this.gapBadge      = null;
     this.gapZone       = null;
     this.gapInput       = null;
-    this.edgeHighlightA = null;
-    this.edgeHighlightB = null;
+    this.poolA          = null; // pools of edge-highlight divs — one entry per matched element edge
+    this.poolB          = null;
     this._dragCleanup   = null;
   }
 
@@ -23,8 +32,8 @@ export class RulerTool {
     this._active = true;
     if (!this.lineA) this._createPair();
     this._showPanel();
-    if (!this.edgeHighlightA) this.edgeHighlightA = this._makeEdgeHighlight();
-    if (!this.edgeHighlightB) this.edgeHighlightB = this._makeEdgeHighlight();
+    if (!this.poolA) this.poolA = [];
+    if (!this.poolB) this.poolB = [];
   }
 
   deactivate() {
@@ -38,19 +47,20 @@ export class RulerTool {
     this.lineB?.el.remove();
     this.gapEl?.remove();
     this.gapZone?.remove();
-    this.edgeHighlightA?.remove();
-    this.edgeHighlightB?.remove();
+    this.poolA?.forEach(el => el.remove());
+    this.poolB?.forEach(el => el.remove());
     this.lineA = this.lineB = this.gapEl = this.gapBadge = this.gapZone = null;
-    this.edgeHighlightA = this.edgeHighlightB = null;
+    this.poolA = this.poolB = null;
   }
 
   destroy() { this.deactivate(); }
 
-  // ── Edge highlight — snaps to the nearest matching edge (top/bottom for a
-  // horizontal ruler, left/right for a vertical one) of whatever's under a
-  // line, so it's obvious exactly which pixel you're measuring against. Only
-  // shown while a line (or the pair) is actually being dragged — otherwise
-  // it'd just be noise while passively hovering the page. ──
+  // ── Edge highlight — highlights every element edge (top/bottom for a
+  // horizontal ruler, left/right for a vertical one) that the line is
+  // currently crossing, each in its own color, so it's obvious exactly which
+  // elements align to that pixel. Only shown while a line (or the pair) is
+  // actually being dragged — otherwise it'd just be noise while passively
+  // hovering the page. ──
   _makeEdgeHighlight() {
     const el = document.createElement('div');
     el.className = 'ruler-edge-highlight';
@@ -59,62 +69,127 @@ export class RulerTool {
   }
 
   _hideEdgeHighlights() {
-    this.edgeHighlightA.style.display = 'none';
-    this.edgeHighlightB.style.display = 'none';
+    for (const el of this.poolA) el.style.display = 'none';
+    for (const el of this.poolB) el.style.display = 'none';
+    this.poolA._lastCoord = this.poolB._lastCoord = undefined;
   }
 
-  _updateEdgeHighlight(el, x, y) {
-    // Only within a tight snap distance — otherwise "nearest edge" can pick a
-    // far border (e.g. a large ancestor's) well before the line has actually
-    // reached it, which reads as the highlight jumping to the wrong element
-    // early. The line's exact position may itself sit in the blank gap just
-    // outside an element (nothing painted there but html/body), so probe a
-    // little further out on either side too, to find a border that's close
-    // by even though the line hasn't reached it yet.
-    const SNAP_DISTANCE = 24;
-    const horizontal = this.orientation === 'horizontal';
-    let best = null; // { left, edge, width } in horizontal; { top, edge, height } in vertical
+  // Whether some rendered element's edge sits at `coord`, for the ruler
+  // line's own snapped/unsnapped color (see _updateSnap).
+  _edgeMatch(r, coord, horizontal) {
+    const EPS = 1;
+    return horizontal
+      ? Math.abs(r.top - coord) <= EPS || Math.abs(r.bottom - coord) <= EPS
+      : Math.abs(r.left - coord) <= EPS || Math.abs(r.right - coord) <= EPS;
+  }
 
-    for (const offset of [0, SNAP_DISTANCE, -SNAP_DISTANCE]) {
-      const px = horizontal ? x : x + offset;
-      const py = horizontal ? y + offset : y;
-      const target = document.elementsFromPoint(px, py)
-        .find(t => t !== document.documentElement && t !== document.body && !isArgus(t, this.tb.shadow));
-      if (!target) continue;
+  _hasEdgeMatch(coord, horizontal) {
+    for (const el of document.body.querySelectorAll('*')) {
+      if (isArgus(el, this.tb.shadow)) continue;
+      if (el.getClientRects().length === 0) continue;
+      if (this._edgeMatch(el.getBoundingClientRect(), coord, horizontal)) return true;
+    }
+    return false;
+  }
 
-      const r = target.getBoundingClientRect();
+  // Every element whose top/bottom (horizontal) or left/right (vertical) edge
+  // sits at `coord`, deduped by cross-axis range and capped to keep a
+  // pathological page from stalling drag.
+  _collectEdgeSegments(coord, horizontal) {
+    const raw = [];
+
+    for (const el of document.body.querySelectorAll('*')) {
+      if (isArgus(el, this.tb.shadow)) continue;
+      if (el.getClientRects().length === 0) continue; // not rendered (display:none, detached, etc.)
+
+      const r = el.getBoundingClientRect();
+      if (!this._edgeMatch(r, coord, horizontal)) continue;
+
+      const a = horizontal ? Math.round(r.left) : Math.round(r.top);
+      const b = horizontal ? Math.round(r.right) : Math.round(r.bottom);
+      if (b <= a) continue; // zero-width/height on the cross axis — nothing to draw
+
+      raw.push({ el, a, b });
+    }
+
+    // Collapse ancestor/descendant pairs sharing (near enough) the same range —
+    // a full-bleed child (e.g. an <img> filling its wrapper) renders the same
+    // visual edge as its container, and should read as one border, not two.
+    const RANGE_EPS = 2;
+    const segs = [];
+    for (const cur of raw) {
+      const coveredByAncestor = raw.some(other =>
+        other !== cur &&
+        Math.abs(cur.a - other.a) <= RANGE_EPS && Math.abs(cur.b - other.b) <= RANGE_EPS &&
+        other.el !== cur.el && other.el.contains(cur.el));
+      if (!coveredByAncestor) segs.push(cur);
+    }
+
+    // Any remaining elements that land on the exact same range (e.g.
+    // overlapping siblings, not ancestor/descendant) — keep just the first.
+    const seen = new Set();
+    const deduped = segs.filter(({ a, b }) => {
+      const key = `${a}:${b}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+
+    // Prioritize the most specific (narrowest) elements when there are more
+    // matches than we can usefully draw.
+    if (deduped.length > EDGE_MAX_SEGS) {
+      deduped.sort((x, y) => (x.b - x.a) - (y.b - y.a));
+      deduped.length = EDGE_MAX_SEGS;
+    }
+    return deduped;
+  }
+
+  // Greedy interval-graph packing: segments whose cross-axis ranges overlap
+  // get stacked into different rows so they never visually intersect;
+  // non-overlapping segments share row 0, right on the ruler line.
+  _assignRows(segs) {
+    const PAD = 2;
+    segs.sort((x, y) => x.a - y.a);
+    const rowEnds = [];
+    for (const seg of segs) {
+      let row = rowEnds.findIndex(end => seg.a >= end + PAD);
+      if (row === -1) { row = rowEnds.length; rowEnds.push(seg.b); }
+      else            { rowEnds[row] = seg.b; }
+      seg.row = row;
+    }
+    return segs.filter(s => s.row < EDGE_MAX_ROWS);
+  }
+
+  _updateEdgeHighlights(pool, pos, horizontal) {
+    const coord = pos + VIS_OFFSET; // match the actual rendered pixel, not the stored offset
+    if (pool._lastCoord === coord && pool._lastHorizontal === horizontal) return;
+    pool._lastCoord = coord;
+    pool._lastHorizontal = horizontal;
+
+    const segs = this._assignRows(this._collectEdgeSegments(coord, horizontal));
+
+    segs.forEach((seg, i) => {
+      const el = pool[i] || (pool[i] = this._makeEdgeHighlight());
+      const color  = EDGE_PALETTE[i % EDGE_PALETTE.length];
+      const offset = seg.row * EDGE_ROW_GAP;
+      el.style.background = color;
+      el.style.boxShadow   = `0 0 4px ${color}99`;
       if (horizontal) {
-        const distTop    = Math.abs(y - r.top);
-        const distBottom = Math.abs(y - r.bottom);
-        const dist = Math.min(distTop, distBottom);
-        if (dist <= SNAP_DISTANCE && (!best || dist < best.dist)) {
-          best = { dist, left: r.left, width: r.width, edge: distTop <= distBottom ? r.top : r.bottom };
-        }
+        Object.assign(el.style, {
+          display: 'block',
+          left: `${seg.a}px`, top: `${coord - 1 + offset}px`,
+          width: `${seg.b - seg.a}px`, height: '2px',
+        });
       } else {
-        const distLeft  = Math.abs(x - r.left);
-        const distRight = Math.abs(x - r.right);
-        const dist = Math.min(distLeft, distRight);
-        if (dist <= SNAP_DISTANCE && (!best || dist < best.dist)) {
-          best = { dist, top: r.top, height: r.height, edge: distLeft <= distRight ? r.left : r.right };
-        }
+        Object.assign(el.style, {
+          display: 'block',
+          left: `${coord - 1 + offset}px`, top: `${seg.a}px`,
+          width: '2px', height: `${seg.b - seg.a}px`,
+        });
       }
-    }
+    });
 
-    if (!best) { el.style.display = 'none'; return; }
-
-    if (horizontal) {
-      Object.assign(el.style, {
-        display: 'block',
-        left: `${best.left}px`, top: `${best.edge - 1}px`,
-        width: `${best.width}px`, height: '2px',
-      });
-    } else {
-      Object.assign(el.style, {
-        display: 'block',
-        left: `${best.edge - 1}px`, top: `${best.top}px`,
-        width: '2px', height: `${best.height}px`,
-      });
-    }
+    for (let i = segs.length; i < pool.length; i++) pool[i].style.display = 'none';
   }
 
   // ── Pair creation ──
@@ -165,16 +240,17 @@ export class RulerTool {
       const startMouse  = horizontal ? e.clientY : e.clientX;
       const startPos    = line.pos;
       const max         = horizontal ? window.innerHeight : window.innerWidth;
+      const pool        = line === this.lineA ? this.poolA : this.poolB;
+      const otherPool   = pool === this.poolA ? this.poolB : this.poolA;
       document.body.style.userSelect = 'none';
-      this.edgeHighlightB.style.display = 'none'; // only one line is moving — only one highlight needed
+      for (const el of otherPool) el.style.display = 'none'; // only one line is moving — only one set of highlights needed
 
       const onMove = (e) => {
         const current = horizontal ? e.clientY : e.clientX;
-        const next = Math.max(0, Math.min(startPos + (current - startMouse), max));
+        const next = Math.max(-VIS_OFFSET, Math.min(startPos + (current - startMouse), max - VIS_OFFSET));
         this._applyPos(line, next);
         this._updateGap();
-        if (horizontal) this._updateEdgeHighlight(this.edgeHighlightA, e.clientX, next);
-        else            this._updateEdgeHighlight(this.edgeHighlightA, next, e.clientY);
+        this._updateEdgeHighlights(pool, next, horizontal);
       };
       const onUp = () => {
         document.body.style.userSelect = '';
@@ -230,20 +306,15 @@ export class RulerTool {
       const onMove = (e) => {
         const current = horizontal ? e.clientY : e.clientX;
         const delta = current - startMouse;
-        const minDelta = -Math.min(startA, startB);
-        const maxDelta = max - Math.max(startA, startB);
+        const minDelta = -VIS_OFFSET - Math.min(startA, startB);
+        const maxDelta = max - VIS_OFFSET - Math.max(startA, startB);
         const clamped = Math.max(minDelta, Math.min(delta, maxDelta));
         this._applyPos(this.lineA, startA + clamped);
         this._applyPos(this.lineB, startB + clamped);
         this._updateGap();
-        // Both lines are moving together — highlight each one's own nearest edge.
-        if (horizontal) {
-          this._updateEdgeHighlight(this.edgeHighlightA, e.clientX, this.lineA.pos);
-          this._updateEdgeHighlight(this.edgeHighlightB, e.clientX, this.lineB.pos);
-        } else {
-          this._updateEdgeHighlight(this.edgeHighlightA, this.lineA.pos, e.clientY);
-          this._updateEdgeHighlight(this.edgeHighlightB, this.lineB.pos, e.clientY);
-        }
+        // Both lines are moving together — highlight each one's own matching edges.
+        this._updateEdgeHighlights(this.poolA, this.lineA.pos, horizontal);
+        this._updateEdgeHighlights(this.poolB, this.lineB.pos, horizontal);
       };
       const onUp = () => {
         document.body.style.userSelect = '';
@@ -258,7 +329,20 @@ export class RulerTool {
     });
   }
 
+  // Colors the line green (instead of the default orange) when it lands
+  // exactly on a matching element edge, so an exact measurement is obvious
+  // without having to drag and watch for the multi-color highlight.
+  _updateSnap(line) {
+    const horizontal = this.orientation === 'horizontal';
+    const snapped = this._hasEdgeMatch(line.pos + VIS_OFFSET, horizontal);
+    line.el.classList.toggle('snapped', snapped);
+    line.el.style.setProperty('--rc', snapped ? SNAP_COLOR : LINE_COLOR);
+  }
+
   _updateGap() {
+    this._updateSnap(this.lineA);
+    this._updateSnap(this.lineB);
+
     const gap    = Math.abs(this.lineB.pos - this.lineA.pos);
     const minPos = Math.min(this.lineA.pos, this.lineB.pos);
     this.gapBadge.textContent = `${Math.round(gap)}px`;
@@ -320,7 +404,7 @@ export class RulerTool {
     const horizontal = this.orientation === 'horizontal';
     const max = horizontal ? window.innerHeight : window.innerWidth;
     const dir = Math.sign(this.lineB.pos - this.lineA.pos) || 1;
-    const newB = Math.max(0, Math.min(this.lineA.pos + dir * val, max));
+    const newB = Math.max(-VIS_OFFSET, Math.min(this.lineA.pos + dir * val, max - VIS_OFFSET));
     this._applyPos(this.lineB, newB);
     this._updateGap();
   }
@@ -329,7 +413,7 @@ export class RulerTool {
   _rotate() {
     const oldMax = this.orientation === 'horizontal' ? window.innerHeight : window.innerWidth;
     const newMax = this.orientation === 'horizontal' ? window.innerWidth  : window.innerHeight;
-    const mapPos = (pos) => Math.max(0, Math.min(Math.round(newMax / 2 + (pos - oldMax / 2)), newMax));
+    const mapPos = (pos) => Math.max(-VIS_OFFSET, Math.min(Math.round(newMax / 2 + (pos - oldMax / 2)), newMax - VIS_OFFSET));
 
     const newA = mapPos(this.lineA.pos);
     const newB = mapPos(this.lineB.pos);

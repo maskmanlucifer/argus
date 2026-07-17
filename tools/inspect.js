@@ -2,11 +2,8 @@ import { isArgus } from './utils.js';
 
 const PANEL_REST_DELAY = 220; // ms the cursor must rest on an element before its panel appears
 
-function _shorthand(t, r, b, l) {
-  if (t === '0px' && r === '0px' && b === '0px' && l === '0px') return '—';
-  if (t === r && r === b && b === l) return t;
-  if (t === b && r === l) return `${t} ${r}`;
-  return `${t} ${r} ${b} ${l}`;
+function _px(v) {
+  return Math.round(parseFloat(v)) || 0;
 }
 
 export class InspectTool {
@@ -89,15 +86,7 @@ export class InspectTool {
   _onMouseMove(e) {
     if (!this._active) return;
     const target = this._realTarget(e.target);
-    if (!target) return; // hovering our own UI (e.g. the panel) — leave everything as-is, so Copy CSS stays clickable
-
-    // The panel sits in the small gap just outside the highlighted element.
-    // Crossing that gap still passes over real page content underneath, which
-    // would otherwise switch the target mid-transit and yank the panel away
-    // right as the cursor is heading for it. Treat the cursor as still "on"
-    // the current element while it's anywhere inside the box spanning the
-    // element and the panel together.
-    if (this.panel && this._currentHover && target !== this._currentHover && this._isInBridge(e)) return;
+    if (!target) return; // hovering our own UI (e.g. the panel) — leave everything as-is
 
     this._placeEl(this.hoverHighlight, target);
     this._currentHover = target;
@@ -114,28 +103,20 @@ export class InspectTool {
     }, PANEL_REST_DELAY);
   }
 
-  _isInBridge(e) {
-    const m  = 12;
-    const pr = this.panel.getBoundingClientRect();
-    return e.clientX >= pr.left - m && e.clientX <= pr.right  + m &&
-           e.clientY >= pr.top  - m && e.clientY <= pr.bottom + m;
-  }
-
   // ── Panel — reuses one persistent node so the entrance animation doesn't
   // replay (and the panel doesn't flicker/jump) on every hover update ──
   _showPanel(el) {
-    const cs  = window.getComputedStyle(el);
-    const tag = el.tagName.toLowerCase();
-    const cls = [...el.classList].join(' ') || '—';
+    const cs   = window.getComputedStyle(el);
+    const rect = el.getBoundingClientRect();
+    const tag  = el.tagName.toLowerCase();
+    const cls  = [...el.classList].join(' ') || '—';
+    const bgColor = cs.backgroundColor;
 
-    const textColor  = cs.color;
-    const bgColor    = cs.backgroundColor;
-    const fontSize   = cs.fontSize;
-    const fontWeight = cs.fontWeight;
-    const fontFamily = cs.fontFamily.split(',')[0].replace(/['"]/g, '').trim();
-
-    const pad = _shorthand(cs.paddingTop, cs.paddingRight, cs.paddingBottom, cs.paddingLeft);
-    const mar = _shorthand(cs.marginTop,  cs.marginRight,  cs.marginBottom,  cs.marginLeft);
+    const mt = _px(cs.marginTop),  mr = _px(cs.marginRight),  mb = _px(cs.marginBottom),  ml = _px(cs.marginLeft);
+    const bt = _px(cs.borderTopWidth), br = _px(cs.borderRightWidth), bb = _px(cs.borderBottomWidth), bl = _px(cs.borderLeftWidth);
+    const pt = _px(cs.paddingTop), pr = _px(cs.paddingRight), pb = _px(cs.paddingBottom), pl = _px(cs.paddingLeft);
+    const cw = Math.round(rect.width  - bl - br - pl - pr);
+    const ch = Math.round(rect.height - bt - bb - pt - pb);
 
     const row  = (k, v, swatch) => `
       <div class="panel-row">
@@ -144,6 +125,10 @@ export class InspectTool {
           ${swatch ? `<span class="swatch" style="background:${swatch};"></span>` : ''}${v}
         </span>
       </div>`;
+
+    // A side with an actual value stands out from the (usually 0) rest, so
+    // it's obvious at a glance which sides are actually contributing space.
+    const bmVal = (side, v) => `<span class="bm-val bm-val-${side}${v !== 0 ? ' bm-val--active' : ''}">${v}</span>`;
 
     if (!this.panel) {
       this.panel = document.createElement('div');
@@ -160,18 +145,24 @@ export class InspectTool {
         <span class="panel-key">Class</span>
         <span class="panel-val panel-val--wrap">${cls}</span>
       </div>
-      ${row('Font',   fontFamily)}
-      ${row('Size',   fontSize)}
-      ${row('Weight', fontWeight)}
-      ${row('Color',  textColor,  textColor)}
-      ${row('BG',     bgColor,    bgColor)}
-      <div class="inspect-section-label">Spacing</div>
-      ${row('Padding', pad)}
-      ${row('Margin',  mar)}
-      <button class="panel-copy-btn">Copy CSS</button>
+      ${row('BG', bgColor, bgColor)}
+      <div class="inspect-section-label">Box Model</div>
+      <div class="bm-margin">
+        <span class="bm-label">margin</span>
+        ${bmVal('top', mt)}${bmVal('bottom', mb)}${bmVal('left', ml)}${bmVal('right', mr)}
+        <div class="bm-border">
+          <span class="bm-label">border</span>
+          ${bmVal('top', bt)}${bmVal('bottom', bb)}${bmVal('left', bl)}${bmVal('right', br)}
+          <div class="bm-padding">
+            <span class="bm-label">padding</span>
+            ${bmVal('top', pt)}${bmVal('bottom', pb)}${bmVal('left', pl)}${bmVal('right', pr)}
+            <div class="bm-content"></div>
+          </div>
+        </div>
+      </div>
+      ${row('Size (w × h)', `${cw} × ${ch}`)}
     `;
 
-    this.panel.querySelector('.panel-copy-btn').addEventListener('click', () => this._copyCss(el, this.panel));
     this._positionPanel(el);
   }
 
@@ -224,29 +215,6 @@ export class InspectTool {
   _removePanel() {
     this.panel?.remove();
     this.panel = null;
-  }
-
-  // ── CSS copy ──
-  _copyCss(el, panelEl) {
-    const cs  = window.getComputedStyle(el);
-    const tag = el.tagName.toLowerCase();
-    const cls = el.className ? `.${[...el.classList].join('.')}` : '';
-    const snippet = [
-      `${tag}${cls} {`,
-      `  font-family: ${cs.fontFamily};`,
-      `  font-size: ${cs.fontSize};`,
-      `  font-weight: ${cs.fontWeight};`,
-      `  color: ${cs.color};`,
-      `  background-color: ${cs.backgroundColor};`,
-      `}`,
-    ].join('\n');
-
-    navigator.clipboard.writeText(snippet).then(() => {
-      const btn = panelEl.querySelector('.panel-copy-btn');
-      btn.textContent = 'Copied!';
-      btn.classList.add('copied');
-      setTimeout(() => { btn.textContent = 'Copy CSS'; btn.classList.remove('copied'); }, 1500);
-    });
   }
 
   // ── Helpers ──

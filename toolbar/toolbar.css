@@ -229,19 +229,59 @@
   margin: 8px 0 2px;
 }
 
-.panel-copy-btn {
-  margin-top: 8px; width: 100%; height: 26px;
-  border: none; border-radius: 5px; cursor: pointer;
-  font-size: 11px; font-weight: 600;
-  font-family: inherit;
-  background: #2170F4; color: #fff;
-  transition: opacity 120ms;
-}
-.panel-copy-btn:hover { opacity: 0.88; }
-.panel-copy-btn.copied { background: #0ABE51; }
-
 /* ── Color swatch ── */
 .swatch { width: 14px; height: 14px; border-radius: 3px; flex: none; display: inline-block; }
+
+/* ── Box model diagram — concentric margin/border/padding/content rectangles.
+   Each ring is full-width (not shrink-wrapped) and the nested ring flexes to
+   fill the remaining space, so it reads as one wide, short rectangle spanning
+   the panel rather than a tall, centered stack. A single neutral gray, in
+   increasing steps, keeps it quiet in both themes; content gets the toolbar's
+   own accent blue so the element itself still stands out. ── */
+.bm-margin, .bm-border, .bm-padding {
+  position: relative;
+  box-sizing: border-box;
+  border-radius: 3px;
+  padding: 16px;     /* equal gap on bottom/left/right — the nested ring/content sits exactly this far in on every side */
+  padding-top: 17px; /* the top value now shares the label's line instead of stacking below it */
+}
+.bm-margin  { background: rgba(127,131,140,0.07); }
+.bm-border  { background: rgba(127,131,140,0.11); }
+.bm-padding { background: rgba(127,131,140,0.16); }
+
+.bm-label {
+  position: absolute; top: 3px; left: 5px;
+  font-size: 7.5px; font-weight: 500; letter-spacing: 0.04em;
+  text-transform: uppercase; color: currentColor; opacity: 0.5;
+}
+
+/* Each value sits centered within its own side's gap, independent of the
+   nested ring's layout — so it's always centered in that gap, not pushed to
+   one edge of it. Left/right span the ring's full height (not just the area
+   below the label) so they land centered on the whole ring, not bunched up top. */
+.bm-val {
+  position: absolute;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 8.5px; font-weight: 500; color: currentColor; opacity: 0.65; line-height: 1;
+}
+.bm-val-top    { top: 3px; left: 16px; right: 16px; height: 11px; }
+.bm-val-bottom { bottom: 0;  left: 16px; right: 16px; height: 16px; }
+.bm-val-left   { left: 0; top: 0; bottom: 0; width: 16px; }
+.bm-val-right  { right: 0; top: 0; bottom: 0; width: 16px; }
+
+/* A side that actually has spacing stands out from the (usually 0) rest —
+   colored to match its own section, not one blanket color. */
+.bm-val--active { opacity: 1; font-weight: 700; }
+.bm-margin  > .bm-val--active { color: #D97706; }
+.bm-border  > .bm-val--active { color: #CA8A04; }
+.bm-padding > .bm-val--active { color: #16A34A; }
+
+.bm-content {
+  height: 20px;
+  border-radius: 2px;
+  background: rgba(33,112,244,0.18);
+}
+.theme-dark .bm-content { background: rgba(33,112,244,0.3); }
 
 /* ── Search panel ── */
 .argus-search-input {
@@ -345,6 +385,9 @@
 
 .argus-ruler-line:hover .line-vis { opacity: 1; }
 
+/* Snapped — line lands exactly on a matching element edge (--rc switches to green in JS) */
+.argus-ruler-line.snapped .line-vis { opacity: 1; box-shadow: 0 0 6px var(--rc); }
+
 /* ── Gap connector — purely visual (dotted line + px badge), sits above the gap zone ── */
 .ruler-gap-connector {
   position: fixed;
@@ -411,8 +454,7 @@
   z-index: 2147483647;
   display: none;
   pointer-events: none;
-  background: #0ABE51;
-  box-shadow: 0 0 4px rgba(10,190,81,0.6);
+  /* background/box-shadow set per-instance in JS — each matched edge gets its own color */
 }
 
 /* ruler panel */
