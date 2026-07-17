@@ -2,6 +2,12 @@ import { isArgus } from './utils.js';
 
 const PANEL_REST_DELAY = 220; // ms the cursor must rest on an element before its panel appears
 
+/**
+ * Parses a computed-style length (e.g. "12px") to a rounded integer,
+ * falling back to 0 for unparseable values.
+ * @param {string} v
+ * @returns {number}
+ */
 function _px(v) {
   return Math.round(parseFloat(v)) || 0;
 }
@@ -115,8 +121,11 @@ export class InspectTool {
     const mt = _px(cs.marginTop),  mr = _px(cs.marginRight),  mb = _px(cs.marginBottom),  ml = _px(cs.marginLeft);
     const bt = _px(cs.borderTopWidth), br = _px(cs.borderRightWidth), bb = _px(cs.borderBottomWidth), bl = _px(cs.borderLeftWidth);
     const pt = _px(cs.paddingTop), pr = _px(cs.paddingRight), pb = _px(cs.paddingBottom), pl = _px(cs.paddingLeft);
-    const cw = Math.round(rect.width  - bl - br - pl - pr);
-    const ch = Math.round(rect.height - bt - bb - pt - pb);
+    // Floor at 0 — a layout where the rendered box is smaller than its own
+    // border+padding (e.g. a collapsed/zero-size element) would otherwise
+    // show a nonsensical negative content size.
+    const cw = Math.max(0, Math.round(rect.width  - bl - br - pl - pr));
+    const ch = Math.max(0, Math.round(rect.height - bt - bb - pt - pb));
 
     const row  = (k, v, swatch) => `
       <div class="panel-row">

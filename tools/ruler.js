@@ -11,6 +11,7 @@ const EDGE_PALETTE = ['#F26432', '#2170F4', '#0ABE51', '#FFC53D', '#A855F7', '#F
 const EDGE_ROW_GAP  = 4;  // px between stacked rows when two matches' ranges overlap
 const EDGE_MAX_SEGS = 48; // hard cap on matches scanned per update — keeps a pathological page from stalling drag
 const EDGE_MAX_ROWS = 8;
+const EDGE_PROXIMITY = 80; // px along the line — only matches within this of the cursor are shown
 
 export class RulerTool {
   constructor(toolbar) {
@@ -74,8 +75,14 @@ export class RulerTool {
     this.poolA._lastCoord = this.poolB._lastCoord = undefined;
   }
 
-  // Whether some rendered element's edge sits at `coord`, for the ruler
-  // line's own snapped/unsnapped color (see _updateSnap).
+  /**
+   * Whether a rendered rect has an edge (top/bottom if horizontal, left/right
+   * otherwise) sitting at `coord`, within a 1px tolerance.
+   * @param {DOMRect} r
+   * @param {number} coord
+   * @param {boolean} horizontal
+   * @returns {boolean}
+   */
   _edgeMatch(r, coord, horizontal) {
     const EPS = 1;
     return horizontal
@@ -83,6 +90,14 @@ export class RulerTool {
       : Math.abs(r.left - coord) <= EPS || Math.abs(r.right - coord) <= EPS;
   }
 
+  /**
+   * Whether any rendered page element (excluding Argus's own UI) has an edge
+   * at `coord`. Short-circuits on the first match — used for the ruler line's
+   * own snapped/unsnapped color (see _updateSnap), which only needs a boolean.
+   * @param {number} coord
+   * @param {boolean} horizontal
+   * @returns {boolean}
+   */
   _hasEdgeMatch(coord, horizontal) {
     for (const el of document.body.querySelectorAll('*')) {
       if (isArgus(el, this.tb.shadow)) continue;
@@ -92,10 +107,45 @@ export class RulerTool {
     return false;
   }
 
-  // Every element whose top/bottom (horizontal) or left/right (vertical) edge
-  // sits at `coord`, deduped by cross-axis range and capped to keep a
-  // pathological page from stalling drag.
-  _collectEdgeSegments(coord, horizontal) {
+  /**
+   * Distance from `refCoord` to a [a, b] range along the cross axis — 0 if
+   * refCoord falls inside the range.
+   */
+  _distanceToRange(refCoord, a, b) {
+    return refCoord < a ? a - refCoord : refCoord > b ? refCoord - b : 0;
+  }
+
+  /**
+   * Every element whose top/bottom (horizontal) or left/right (vertical) edge
+   * sits at `coord`, deduped by cross-axis range.
+   *
+   * Dedup sorts matches by their cross-axis range and merges near-duplicates
+   * in one pass, instead of an O(n²) ancestor/descendant scan — two elements
+   * landing within RANGE_TOLERANCE of each other (e.g. a wrapper and a
+   * full-bleed child, or two overlapping siblings) are treated as one visual
+   * border, keeping only the narrower (more specific) one.
+   *
+   * When `refCoord` is given (the cursor's position along the line while
+   * dragging), only matches within EDGE_PROXIMITY of it are kept — a page
+   * layout commonly has dozens of unrelated elements sharing the same edge
+   * scattered down its whole length, and showing all of them is just noise;
+   * only the ones actually near where the cursor is are useful.
+   * @param {number} coord
+   * @param {boolean} horizontal
+   * @param {number} [refCoord]
+   * @returns {{a: number, b: number}[]}
+   */
+  _collectEdgeSegments(coord, horizontal, refCoord) {
+    const RANGE_TOLERANCE = 2; // px — matches within this tolerance collapse into one segment
+    // A full-page wrapper (layout container, <main>, etc.) spans almost the
+    // entire viewport in the ruler's direction — it isn't a meaningful edge
+    // to compare other elements against, and its huge span would otherwise
+    // "overlap" nearly everything below it, forcing every real match onto
+    // its own row/color for no reason. Excluded from matching entirely.
+    // Skipped on small viewports (e.g. an embedded widget/iframe), where
+    // ordinary content routinely spans 90%+ of a already-tiny cross axis.
+    const crossMax = horizontal ? window.innerWidth : window.innerHeight;
+    const wrapperCutoff = crossMax > 300 ? crossMax * 0.9 : Infinity;
     const raw = [];
 
     for (const el of document.body.querySelectorAll('*')) {
@@ -108,45 +158,46 @@ export class RulerTool {
       const a = horizontal ? Math.round(r.left) : Math.round(r.top);
       const b = horizontal ? Math.round(r.right) : Math.round(r.bottom);
       if (b <= a) continue; // zero-width/height on the cross axis — nothing to draw
+      if (b - a > wrapperCutoff) continue;
+      if (refCoord != null && this._distanceToRange(refCoord, a, b) > EDGE_PROXIMITY) continue;
 
-      raw.push({ el, a, b });
+      raw.push({ a, b });
     }
 
-    // Collapse ancestor/descendant pairs sharing (near enough) the same range —
-    // a full-bleed child (e.g. an <img> filling its wrapper) renders the same
-    // visual edge as its container, and should read as one border, not two.
-    const RANGE_EPS = 2;
+    // Dedup by sweeping in order of `a`: near-duplicate ranges (e.g. a wrapper
+    // and its full-bleed child) land next to each other once sorted, so
+    // comparing each to the previous kept segment catches them without the
+    // hard bucket-boundary edge case a rounded grouping key would have.
+    raw.sort((x, y) => x.a - y.a);
     const segs = [];
     for (const cur of raw) {
-      const coveredByAncestor = raw.some(other =>
-        other !== cur &&
-        Math.abs(cur.a - other.a) <= RANGE_EPS && Math.abs(cur.b - other.b) <= RANGE_EPS &&
-        other.el !== cur.el && other.el.contains(cur.el));
-      if (!coveredByAncestor) segs.push(cur);
+      const last = segs[segs.length - 1];
+      if (last && cur.a - last.a <= RANGE_TOLERANCE && Math.abs(cur.b - last.b) <= RANGE_TOLERANCE) {
+        if (cur.b - cur.a < last.b - last.a) segs[segs.length - 1] = cur; // keep the narrower (more specific) one
+      } else {
+        segs.push(cur);
+      }
     }
 
-    // Any remaining elements that land on the exact same range (e.g.
-    // overlapping siblings, not ancestor/descendant) — keep just the first.
-    const seen = new Set();
-    const deduped = segs.filter(({ a, b }) => {
-      const key = `${a}:${b}`;
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
-
-    // Prioritize the most specific (narrowest) elements when there are more
+    // Prioritize whatever's closest to the cursor (or, with no reference
+    // point, the most specific/narrowest elements) when there are still more
     // matches than we can usefully draw.
-    if (deduped.length > EDGE_MAX_SEGS) {
-      deduped.sort((x, y) => (x.b - x.a) - (y.b - y.a));
-      deduped.length = EDGE_MAX_SEGS;
+    if (segs.length > EDGE_MAX_SEGS) {
+      if (refCoord != null) segs.sort((x, y) => this._distanceToRange(refCoord, x.a, x.b) - this._distanceToRange(refCoord, y.a, y.b));
+      else                  segs.sort((x, y) => (x.b - x.a) - (y.b - y.a));
+      segs.length = EDGE_MAX_SEGS;
     }
-    return deduped;
+    return segs;
   }
 
-  // Greedy interval-graph packing: segments whose cross-axis ranges overlap
-  // get stacked into different rows so they never visually intersect;
-  // non-overlapping segments share row 0, right on the ruler line.
+  /**
+   * Greedy interval-graph packing: segments whose cross-axis ranges overlap
+   * get stacked into different rows (mutates `seg.row`) so they never
+   * visually intersect; non-overlapping segments share row 0, right on the
+   * ruler line. Segments beyond EDGE_MAX_ROWS are dropped.
+   * @param {{a: number, b: number}[]} segs
+   * @returns {{a: number, b: number, row: number}[]}
+   */
   _assignRows(segs) {
     const PAD = 2;
     segs.sort((x, y) => x.a - y.a);
@@ -160,17 +211,33 @@ export class RulerTool {
     return segs.filter(s => s.row < EDGE_MAX_ROWS);
   }
 
-  _updateEdgeHighlights(pool, pos, horizontal) {
+  /**
+   * Renders one colored highlight per matched edge near `refCoord` (see
+   * _collectEdgeSegments) into `pool`, reusing/hiding pooled elements rather
+   * than recreating them. No-ops if nothing relevant has changed since the
+   * last call (refCoord is rounded for this check so sub-pixel mouse jitter
+   * doesn't force a rescan on every event).
+   * @param {Element[]} pool
+   * @param {number} pos
+   * @param {boolean} horizontal
+   * @param {number} refCoord - cursor's position along the line
+   */
+  _updateEdgeHighlights(pool, pos, horizontal, refCoord) {
     const coord = pos + VIS_OFFSET; // match the actual rendered pixel, not the stored offset
-    if (pool._lastCoord === coord && pool._lastHorizontal === horizontal) return;
+    const refKey = Math.round(refCoord / 4);
+    if (pool._lastCoord === coord && pool._lastHorizontal === horizontal && pool._lastRefKey === refKey) return;
     pool._lastCoord = coord;
     pool._lastHorizontal = horizontal;
+    pool._lastRefKey = refKey;
 
-    const segs = this._assignRows(this._collectEdgeSegments(coord, horizontal));
+    const segs = this._assignRows(this._collectEdgeSegments(coord, horizontal, refCoord));
 
     segs.forEach((seg, i) => {
       const el = pool[i] || (pool[i] = this._makeEdgeHighlight());
-      const color  = EDGE_PALETTE[i % EDGE_PALETTE.length];
+      // Color by row, not index: most matches don't actually overlap and all
+      // land in row 0 — they should share one color. Only matches bumped to
+      // a new row (a genuine conflict) need a distinguishing color.
+      const color  = EDGE_PALETTE[seg.row % EDGE_PALETTE.length];
       const offset = seg.row * EDGE_ROW_GAP;
       el.style.background = color;
       el.style.boxShadow   = `0 0 4px ${color}99`;
@@ -226,10 +293,21 @@ export class RulerTool {
   }
 
   // ── Position ──
+  // The valid range for a line's stored `pos` in the current orientation —
+  // bounded so the *visible* line (offset VIS_OFFSET inside its element,
+  // see toolbar.css) can still reach the true viewport edge. Single source
+  // of truth for every clamp in this file (drag, typed gap, rotate).
+  _posBounds() {
+    const max = this.orientation === 'horizontal' ? window.innerHeight : window.innerWidth;
+    return { min: -VIS_OFFSET, max: max - VIS_OFFSET };
+  }
+
   _applyPos(line, pos) {
-    line.pos = pos;
-    if (this.orientation === 'horizontal') line.el.style.top  = `${pos}px`;
-    else                                   line.el.style.left = `${pos}px`;
+    const { min, max } = this._posBounds();
+    const clamped = Math.max(min, Math.min(pos, max));
+    line.pos = clamped;
+    if (this.orientation === 'horizontal') line.el.style.top  = `${clamped}px`;
+    else                                   line.el.style.left = `${clamped}px`;
   }
 
   // ── Drag a single line — changes the gap ──
@@ -239,7 +317,6 @@ export class RulerTool {
       const horizontal = this.orientation === 'horizontal';
       const startMouse  = horizontal ? e.clientY : e.clientX;
       const startPos    = line.pos;
-      const max         = horizontal ? window.innerHeight : window.innerWidth;
       const pool        = line === this.lineA ? this.poolA : this.poolB;
       const otherPool   = pool === this.poolA ? this.poolB : this.poolA;
       document.body.style.userSelect = 'none';
@@ -247,10 +324,12 @@ export class RulerTool {
 
       const onMove = (e) => {
         const current = horizontal ? e.clientY : e.clientX;
-        const next = Math.max(-VIS_OFFSET, Math.min(startPos + (current - startMouse), max - VIS_OFFSET));
-        this._applyPos(line, next);
+        this._applyPos(line, startPos + (current - startMouse)); // clamps internally
         this._updateGap();
-        this._updateEdgeHighlights(pool, next, horizontal);
+        // Reference point along the line is the cursor's position on the
+        // OTHER axis (e.g. for a vertical ruler dragged horizontally, that's
+        // where the cursor sits vertically along the line's length).
+        this._updateEdgeHighlights(pool, line.pos, horizontal, horizontal ? e.clientX : e.clientY);
       };
       const onUp = () => {
         document.body.style.userSelect = '';
@@ -300,21 +379,25 @@ export class RulerTool {
       const startMouse  = horizontal ? e.clientY : e.clientX;
       const startA      = this.lineA.pos;
       const startB      = this.lineB.pos;
-      const max         = horizontal ? window.innerHeight : window.innerWidth;
+      const { min, max } = this._posBounds();
       document.body.style.userSelect = 'none';
 
       const onMove = (e) => {
         const current = horizontal ? e.clientY : e.clientX;
         const delta = current - startMouse;
-        const minDelta = -VIS_OFFSET - Math.min(startA, startB);
-        const maxDelta = max - VIS_OFFSET - Math.max(startA, startB);
+        // Bound the shared delta (not each line's final position independently) so
+        // the pair keeps a constant gap while translating, only stopping at an edge.
+        const minDelta = min - Math.min(startA, startB);
+        const maxDelta = max - Math.max(startA, startB);
         const clamped = Math.max(minDelta, Math.min(delta, maxDelta));
         this._applyPos(this.lineA, startA + clamped);
         this._applyPos(this.lineB, startB + clamped);
         this._updateGap();
-        // Both lines are moving together — highlight each one's own matching edges.
-        this._updateEdgeHighlights(this.poolA, this.lineA.pos, horizontal);
-        this._updateEdgeHighlights(this.poolB, this.lineB.pos, horizontal);
+        // Both lines are moving together — highlight each one's own matching
+        // edges near the cursor's position along the line.
+        const refCoord = horizontal ? e.clientX : e.clientY;
+        this._updateEdgeHighlights(this.poolA, this.lineA.pos, horizontal, refCoord);
+        this._updateEdgeHighlights(this.poolB, this.lineB.pos, horizontal, refCoord);
       };
       const onUp = () => {
         document.body.style.userSelect = '';
@@ -329,12 +412,24 @@ export class RulerTool {
     });
   }
 
-  // Colors the line green (instead of the default orange) when it lands
-  // exactly on a matching element edge, so an exact measurement is obvious
-  // without having to drag and watch for the multi-color highlight.
+  /**
+   * Colors the line green (instead of the default orange) when it lands
+   * exactly on a matching element edge, so an exact measurement is obvious
+   * without having to drag and watch for the multi-color highlight.
+   *
+   * _updateGap (its only caller) runs on every mousemove during a drag, but
+   * during a single-line drag the *other* line's coordinate hasn't moved —
+   * skip the full-DOM rescan for it and keep its last snapped state.
+   * @param {{pos: number, el: Element}} line
+   */
   _updateSnap(line) {
     const horizontal = this.orientation === 'horizontal';
-    const snapped = this._hasEdgeMatch(line.pos + VIS_OFFSET, horizontal);
+    const coord = line.pos + VIS_OFFSET;
+    if (line._snapCoord === coord && line._snapHorizontal === horizontal) return;
+    line._snapCoord = coord;
+    line._snapHorizontal = horizontal;
+
+    const snapped = this._hasEdgeMatch(coord, horizontal);
     line.el.classList.toggle('snapped', snapped);
     line.el.style.setProperty('--rc', snapped ? SNAP_COLOR : LINE_COLOR);
   }
@@ -350,10 +445,9 @@ export class RulerTool {
       this.gapInput.value = Math.round(gap);
     }
 
-    // The visible ruler line (line-vis) is offset 4px inside its element
-    // (top:4px for horizontal, left:4px for vertical), so align the connector
-    // to start at the actual rendered pixel, not the stored pos value.
-    const VIS  = 4;
+    // The visible ruler line (line-vis) is offset VIS_OFFSET inside its element
+    // (top/left, see toolbar.css), so align the connector to start at the
+    // actual rendered pixel, not the stored pos value.
     const el   = this.gapEl;
     const p    = this.tb.placement;
     const rail = this.tb.rail.getBoundingClientRect();
@@ -368,14 +462,14 @@ export class RulerTool {
       el.className = 'ruler-gap-connector vertical active';
       Object.assign(el.style, {
         left:   `${cx - 12}px`,
-        top:    `${minPos + VIS}px`,
+        top:    `${minPos + VIS_OFFSET}px`,
         height: `${gap}px`,
         width:  '24px',
       });
 
       Object.assign(this.gapZone.style, {
         left: '0', right: '', width: '100vw',
-        top: `${minPos + VIS}px`, height: `${gap}px`, bottom: '',
+        top: `${minPos + VIS_OFFSET}px`, height: `${gap}px`, bottom: '',
       });
     } else {
       let cy;
@@ -386,14 +480,14 @@ export class RulerTool {
       el.className = 'ruler-gap-connector horizontal active';
       Object.assign(el.style, {
         top:    `${cy - 12}px`,
-        left:   `${minPos + VIS}px`,
+        left:   `${minPos + VIS_OFFSET}px`,
         width:  `${gap}px`,
         height: '24px',
       });
 
       Object.assign(this.gapZone.style, {
         top: '0', bottom: '', height: '100vh',
-        left: `${minPos + VIS}px`, width: `${gap}px`, right: '',
+        left: `${minPos + VIS_OFFSET}px`, width: `${gap}px`, right: '',
       });
     }
   }
@@ -401,11 +495,8 @@ export class RulerTool {
   // ── Editable gap, in the panel — type an exact value, second line snaps to it ──
   _setGap(val) {
     val = Math.max(0, Math.round(Number(val)) || 0);
-    const horizontal = this.orientation === 'horizontal';
-    const max = horizontal ? window.innerHeight : window.innerWidth;
     const dir = Math.sign(this.lineB.pos - this.lineA.pos) || 1;
-    const newB = Math.max(-VIS_OFFSET, Math.min(this.lineA.pos + dir * val, max - VIS_OFFSET));
-    this._applyPos(this.lineB, newB);
+    this._applyPos(this.lineB, this.lineA.pos + dir * val); // clamps internally
     this._updateGap();
   }
 
@@ -413,7 +504,7 @@ export class RulerTool {
   _rotate() {
     const oldMax = this.orientation === 'horizontal' ? window.innerHeight : window.innerWidth;
     const newMax = this.orientation === 'horizontal' ? window.innerWidth  : window.innerHeight;
-    const mapPos = (pos) => Math.max(-VIS_OFFSET, Math.min(Math.round(newMax / 2 + (pos - oldMax / 2)), newMax - VIS_OFFSET));
+    const mapPos = (pos) => Math.round(newMax / 2 + (pos - oldMax / 2)); // _applyPos clamps once orientation flips below
 
     const newA = mapPos(this.lineA.pos);
     const newB = mapPos(this.lineB.pos);
