@@ -373,7 +373,7 @@ export class Toolbar {
       ? `<div class="guide-esc">Esc to dismiss</div>` : '';
     const toolIndex = TOOLS.findIndex(x => x.id === id);
     const shortcutHint = toolIndex > -1
-      ? `<div class="guide-shortcut"><span class="guide-kbd">${ALT_KEY_LABEL}</span> + <span class="guide-kbd">${toolIndex + 1}</span></div>`
+      ? `<div class="guide-shortcut"><span class="guide-kbd">${ALT_KEY_LABEL}</span><span class="guide-plus">+</span><span class="guide-kbd">${toolIndex + 1}</span></div>`
       : '';
     this.guide.innerHTML = `
       <div class="guide-title">${data.title}</div>
