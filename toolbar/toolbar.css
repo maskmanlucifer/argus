@@ -106,6 +106,34 @@
   color: #fff !important;
 }
 
+/* ── Alt-hold key hints (Alt+1..8 direct tool select) ── */
+.argus-hint {
+  position: absolute;
+  top: -5px; right: -5px;
+  min-width: 14px; height: 14px;
+  padding: 0 2px;
+  border-radius: 4px;
+  font-size: 9px; font-weight: 700; line-height: 14px;
+  text-align: center;
+  background: #2170F4;
+  color: #fff;
+  pointer-events: none;
+  opacity: 0;
+  transform: scale(0.6);
+  transition: opacity 120ms ease, transform 120ms ease;
+}
+.argus-hint.visible { opacity: 1; transform: scale(1); }
+
+/* ── What's New badge dot ── */
+.argus-badge-dot {
+  position: absolute;
+  top: 3px; right: 3px;
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: #F44336;
+  pointer-events: none;
+}
+
 /* ── Divider ── */
 .argus-divider {
   flex: none;

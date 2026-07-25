@@ -63,6 +63,10 @@ const UTILITY_GUIDES = {
     title: 'Send Feedback',
     desc:  'Report a bug or request a feature — opens your email client.',
   },
+  whatsnew: {
+    title: "What's New",
+    desc:  'See what changed in the latest update, with illustrations.',
+  },
 };
 
 const PLACEMENTS = ['left', 'top', 'right', 'bottom'];
@@ -77,6 +81,7 @@ const PLACEMENT_ICONS = {
 const SUN_ICON      = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2m-7.07-14.93 1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>`;
 const MOON_ICON     = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>`;
 const CLOSE_ICON    = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>`;
+const WHATSNEW_ICON = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 9 8l-6.5 1 4.7 4.4L6 20l6-3.5 6 3.5-1.2-6.6L21 9l-6.5-1z"/></svg>`;
 const FEEDBACK_ICON = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`;
 
 export class Toolbar {
@@ -94,9 +99,11 @@ export class Toolbar {
   }
 
   async _loadState() {
-    const data = await chrome.storage.local.get(['argus_theme', 'argus_placement']);
+    const data = await chrome.storage.local.get(['argus_theme', 'argus_placement', 'argus_seen_version']);
     this.theme     = data.argus_theme     || 'light';
     this.placement = data.argus_placement || 'top';
+    this.currentVersion = chrome.runtime.getManifest().version;
+    this._hasUpdate = data.argus_seen_version !== this.currentVersion;
   }
 
   _saveState() {
@@ -112,7 +119,7 @@ export class Toolbar {
     this.rail.className = `placement-${this.placement} theme-${this.theme}`;
 
     // Tool buttons
-    TOOLS.forEach(t => {
+    TOOLS.forEach((t, i) => {
       const btn = document.createElement('button');
       btn.className = 'argus-btn';
       btn.dataset.tool = t.id;
@@ -121,6 +128,12 @@ export class Toolbar {
       btn.addEventListener('click',      (e) => { e.stopPropagation(); this._selectTool(t.id); });
       btn.addEventListener('mouseenter', () => this._onHover(t.id, btn));
       btn.addEventListener('mouseleave', () => this._onLeave());
+
+      const hint = document.createElement('span');
+      hint.className = 'argus-hint';
+      hint.textContent = String(i + 1);
+      btn.appendChild(hint);
+
       this.rail.appendChild(btn);
     });
 
@@ -148,6 +161,21 @@ export class Toolbar {
     placeBtn.addEventListener('mouseenter', () => this._onHover('placement', placeBtn));
     placeBtn.addEventListener('mouseleave', () => this._onLeave());
     this.rail.appendChild(placeBtn);
+
+    // What's New
+    const whatsNewBtn = document.createElement('button');
+    whatsNewBtn.className = 'argus-btn';
+    whatsNewBtn.id = 'argus-whatsnew-btn';
+    whatsNewBtn.innerHTML = WHATSNEW_ICON;
+    if (this._hasUpdate) {
+      const dot = document.createElement('span');
+      dot.className = 'argus-badge-dot';
+      whatsNewBtn.appendChild(dot);
+    }
+    whatsNewBtn.addEventListener('click', (e) => { e.stopPropagation(); this._openWhatsNew(whatsNewBtn); });
+    whatsNewBtn.addEventListener('mouseenter', () => this._onHover('whatsnew', whatsNewBtn));
+    whatsNewBtn.addEventListener('mouseleave', () => this._onLeave());
+    this.rail.appendChild(whatsNewBtn);
 
     // Feedback
     const feedbackBtn = document.createElement('button');
@@ -208,8 +236,17 @@ export class Toolbar {
     };
     document.addEventListener('keydown', this._escHandler, true);
 
+    // Alt+1..8 jump to a tool, Alt+Left/Right cycle, holding Alt shows number hints
+    this._shortcutKeydownHandler = (e) => this._onShortcutKeydown(e);
+    this._shortcutKeyupHandler   = (e) => { if (e.key === 'Alt') this._hideAltHints(); };
+    document.addEventListener('keydown', this._shortcutKeydownHandler, true);
+    document.addEventListener('keyup',   this._shortcutKeyupHandler,   true);
+    this._blurHandler = () => this._hideAltHints();
+    window.addEventListener('blur', this._blurHandler);
+
     this._positionRail();
     if (!this._visible) this.rail.classList.add('hidden');
+    else if (!this.activeTool) this._selectTool('inspect');
 
     // Subtle one-shot entrance animation so a freshly-loaded toolbar gets noticed
     this.rail.classList.add('argus-intro');
@@ -266,6 +303,48 @@ export class Toolbar {
     this.rail.querySelectorAll('.argus-btn[data-tool]').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.tool === this.activeTool);
     });
+  }
+
+  // ── Keyboard tool switching (Alt+1..8 direct, Alt+Left/Right cycle) ──
+  _isEditableTarget(e) {
+    const el = e.composedPath?.()[0] || e.target;
+    const editable = el?.tagName === 'INPUT' || el?.tagName === 'TEXTAREA' || el?.isContentEditable;
+    if (!editable) return false;
+    // Inputs inside our own shadow root (e.g. Search's query box) shouldn't
+    // block our own shortcuts — only guard against hijacking the host page's fields.
+    return !this.shadow.contains(el);
+  }
+
+  _onShortcutKeydown(e) {
+    if (!this._visible || e.ctrlKey || e.metaKey || !e.altKey || this._isEditableTarget(e)) return;
+
+    this._showAltHints();
+
+    const digit = e.code.match(/^Digit([1-9])$/)?.[1];
+    if (digit && TOOLS[digit - 1]) {
+      e.preventDefault();
+      this._selectTool(TOOLS[digit - 1].id);
+      return;
+    }
+    if (e.code === 'ArrowRight') { e.preventDefault(); this._cycleTool(1); return; }
+    if (e.code === 'ArrowLeft')  { e.preventDefault(); this._cycleTool(-1); }
+  }
+
+  _cycleTool(dir) {
+    const i = TOOLS.findIndex(t => t.id === this.activeTool);
+    const next = TOOLS[(i + dir + TOOLS.length) % TOOLS.length];
+    this._selectTool(next.id);
+  }
+
+  _showAltHints() {
+    if (this._altHintsVisible) return;
+    this._altHintsVisible = true;
+    this.rail.querySelectorAll('.argus-hint').forEach(h => h.classList.add('visible'));
+  }
+
+  _hideAltHints() {
+    this._altHintsVisible = false;
+    this.rail?.querySelectorAll('.argus-hint').forEach(h => h.classList.remove('visible'));
   }
 
   // ── Guide popover ──
@@ -350,6 +429,15 @@ export class Toolbar {
     Object.values(this.tools).forEach(t => t.setTheme?.(this.theme));
   }
 
+  // ── What's New ──
+  _openWhatsNew(btn) {
+    window.open(chrome.runtime.getURL('whats-new/whats-new.html'), '_blank');
+    if (!this._hasUpdate) return;
+    this._hasUpdate = false;
+    chrome.storage.local.set({ argus_seen_version: this.currentVersion });
+    btn.querySelector('.argus-badge-dot')?.remove();
+  }
+
   // ── Placement ──
   _cyclePlacement() {
     this._hideGuide();
@@ -380,7 +468,7 @@ export class Toolbar {
   }
 
   // ── Visibility ──
-  show()      { this._visible = true;  this.rail?.classList.remove('hidden'); }
+  show()      { this._visible = true;  this.rail?.classList.remove('hidden'); if (!this.activeTool) this._selectTool('inspect'); }
   hide()      { this._visible = false; this._deactivate(false); this.rail?.classList.add('hidden'); }
   isVisible() { return this._visible; }
   toggle()    { this._visible ? this.hide() : this.show(); }
@@ -403,9 +491,12 @@ export class Toolbar {
     this._pageNodes?.forEach(n => n.remove());
     this._pageNodes = null;
     document.removeEventListener('keydown', this._escHandler, true);
+    document.removeEventListener('keydown', this._shortcutKeydownHandler, true);
+    document.removeEventListener('keyup',   this._shortcutKeyupHandler,   true);
+    window.removeEventListener('blur', this._blurHandler);
     window.removeEventListener('resize', this._resizeHandler);
     this.host.remove();
-    // Null the global ref so content.js listener and popup know the toolbar is gone.
+    // Null the global ref so content.js knows the toolbar is gone.
     // __argusLoaded stays true — the existing message listener re-mounts on next click.
     window.__argus_toolbar = null;
   }

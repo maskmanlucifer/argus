@@ -1,0 +1,198 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:       #0D0E12;
+  --surf:     #161820;
+  --border:   rgba(255,255,255,0.07);
+  --accent:   #2170F4;
+  --text:     #E8EAF4;
+  --muted:    rgba(232,234,244,0.42);
+}
+
+html, body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, 'SF Pro Text', 'Helvetica Neue', system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+
+.page {
+  max-width: 580px;
+  margin: 0 auto;
+  padding: 52px 24px 80px;
+}
+
+.hd {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  margin-bottom: 12px;
+}
+
+.hd-logo {
+  width: 36px; height: 36px;
+  border-radius: 9px;
+  background: var(--accent);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+
+.hd-text-name {
+  display: block;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.hd-text-sub {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 1px;
+}
+
+h1 {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+  margin-bottom: 8px;
+}
+
+.lede {
+  font-size: 14px;
+  color: var(--muted);
+  margin-bottom: 36px;
+}
+
+/* ── Feature cards ── */
+.feature {
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: 10px;
+  border-top-left-radius: 6px;
+  border-bottom-left-radius: 6px;
+  padding: 22px 22px 24px;
+  margin-bottom: 14px;
+  background: var(--surf);
+}
+
+.feature-title {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin-bottom: 6px;
+}
+
+.feature-desc {
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 18px;
+}
+
+kbd {
+  display: inline-block;
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 4px;
+  padding: 0 5px;
+  font-size: 11px;
+  font-family: 'SF Mono', ui-monospace, monospace;
+  font-weight: 600;
+  vertical-align: middle;
+  line-height: 1.8;
+}
+
+.preview {
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 9px;
+  overflow: hidden;
+  background: #1A1B1F;
+  padding: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── Illustration 1: icon click → toolbar appears ── */
+.il-click {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.il-icon {
+  width: 34px; height: 34px;
+  border-radius: 8px;
+  background: rgba(33,112,244,0.18);
+  display: flex; align-items: center; justify-content: center;
+  position: relative;
+}
+
+.il-icon img { width: 20px; height: 20px; border-radius: 4px; display: block; }
+
+.il-ring {
+  position: absolute;
+  inset: -4px;
+  border-radius: 12px;
+  border: 1.5px solid var(--accent);
+  opacity: 0;
+  animation: il-ripple 2.4s ease-out infinite;
+}
+
+@keyframes il-ripple {
+  0%   { opacity: 0.85; transform: scale(0.8); }
+  100% { opacity: 0;    transform: scale(1.5); }
+}
+
+.il-arrow {
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+/* ── Illustration 2: rail with Inspect active ── */
+.il-rail {
+  display: flex;
+  gap: 6px;
+  padding: 7px;
+  border-radius: 10px;
+  background: #101116;
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
+.il-btn {
+  width: 30px; height: 30px;
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  color: rgba(255,255,255,0.55);
+  position: relative;
+}
+
+.il-btn.active { background: var(--accent); color: #fff; }
+.il-btn svg { width: 15px; height: 15px; display: block; }
+
+/* ── Illustration 3: rail with number hints ── */
+.il-hint {
+  position: absolute;
+  top: -6px; right: -6px;
+  min-width: 14px; height: 14px;
+  padding: 0 2px;
+  border-radius: 4px;
+  font-size: 9px; font-weight: 700; line-height: 14px;
+  text-align: center;
+  background: var(--accent);
+  color: #fff;
+}
+
+.il-keys {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 14px;
+  flex-shrink: 0;
+  color: var(--muted);
+  font-size: 12px;
+}

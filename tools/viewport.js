@@ -33,7 +33,6 @@ export class ViewportTool {
 
   deactivate() {
     this._active = false;
-    clearTimeout(this._resizeTimer);
     clearTimeout(this._resizeRaf);
     window.removeEventListener('resize', this._onResize);
     this._style?.remove();
