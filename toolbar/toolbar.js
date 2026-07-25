@@ -7,6 +7,11 @@ import { ColorTool }      from '../tools/color.js';
 import { ViewportTool }   from '../tools/viewport.js';
 import { GridTool }       from '../tools/grid.js';
 
+// Mac keyboards have no key labeled "Alt" — the same physical key (and e.altKey)
+// is labeled Option (⌥), so show the label users will actually recognize.
+const IS_MAC = /Mac|iPod|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+const ALT_KEY_LABEL = IS_MAC ? '⌥' : 'Alt';
+
 const TOOLS = [
   {
     id: 'inspect', title: 'Inspect',
@@ -366,9 +371,14 @@ export class Toolbar {
 
     const escHint = (data !== UTILITY_GUIDES.theme && data !== UTILITY_GUIDES.placement)
       ? `<div class="guide-esc">Esc to dismiss</div>` : '';
+    const toolIndex = TOOLS.findIndex(x => x.id === id);
+    const shortcutHint = toolIndex > -1
+      ? `<div class="guide-shortcut"><span class="guide-kbd">${ALT_KEY_LABEL}</span> + <span class="guide-kbd">${toolIndex + 1}</span></div>`
+      : '';
     this.guide.innerHTML = `
       <div class="guide-title">${data.title}</div>
       <div class="guide-desc">${data.desc}</div>
+      ${shortcutHint}
       ${escHint}
     `;
     this.guide.className = `theme-${this.theme}`;

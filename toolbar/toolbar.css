@@ -191,6 +191,23 @@
   letter-spacing: 0.03em;
 }
 
+.guide-shortcut {
+  display: flex; align-items: center; gap: 4px;
+  margin-bottom: 6px;
+  font-size: 10.5px; opacity: 0.55;
+  font-family: -apple-system, 'SF Pro Text', Inter, system-ui, sans-serif;
+}
+
+.guide-kbd {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 15px; height: 15px;
+  padding: 0 4px;
+  border-radius: 4px;
+  font-size: 10px; font-weight: 700;
+}
+.theme-dark  .guide-kbd { background: rgba(255,255,255,0.1); }
+.theme-light .guide-kbd { background: rgba(21,22,26,0.08); }
+
 /* ── Tool panels (inspect / type / color / search / ruler) ── */
 .argus-panel {
   position: fixed;
